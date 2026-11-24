@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { noticeUpdateSchema } from '@/lib/validation';
 import { getCurrentUser, canManageNotices, canPublishNotices, writeAuditLog, getClientIp, hashIp } from '@/lib/security/auth';
 import prisma from '@/lib/db/prisma';
+import { CANONICAL_NOTICES } from '@/lib/data/canonical';
 
 export async function GET(
   request: NextRequest,
@@ -20,11 +21,27 @@ export async function GET(
 
     const { id } = await params;
 
-    const notice = await prisma.governmentNotice.findUnique({
-      where: { id },
-    });
+    let notice: any = null;
+    try {
+      notice = await prisma.governmentNotice.findUnique({
+        where: { id },
+      });
+    } catch (dbErr) {
+      console.warn('DB notice query fallback to canonical:', dbErr);
+    }
 
     if (!notice) {
+      const canonicalNotice = CANONICAL_NOTICES.find(
+        n => n.id === id || n.title.toLowerCase().includes(id.toLowerCase())
+      );
+      if (canonicalNotice) {
+        return NextResponse.json({
+          success: true,
+          data: canonicalNotice,
+          notice: canonicalNotice,
+        });
+      }
+
       return NextResponse.json(
         { success: false, error: 'Notice not found' },
         { status: 404 }
@@ -86,11 +103,27 @@ export async function PATCH(
     const body = await request.json();
     const data = noticeUpdateSchema.parse(body);
 
-    const notice = await prisma.governmentNotice.findUnique({
-      where: { id },
-    });
+    let notice: any = null;
+    try {
+      notice = await prisma.governmentNotice.findUnique({
+        where: { id },
+      });
+    } catch (dbErr) {
+      console.warn('DB notice query fallback to canonical:', dbErr);
+    }
 
     if (!notice) {
+      const canonicalNotice = CANONICAL_NOTICES.find(
+        n => n.id === id || n.title.toLowerCase().includes(id.toLowerCase())
+      );
+      if (canonicalNotice) {
+        return NextResponse.json({
+          success: true,
+          data: canonicalNotice,
+          notice: canonicalNotice,
+        });
+      }
+
       return NextResponse.json(
         { success: false, error: 'Notice not found' },
         { status: 404 }

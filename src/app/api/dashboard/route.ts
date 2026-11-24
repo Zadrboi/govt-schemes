@@ -9,6 +9,7 @@ import {
   calculateEquityLens,
 } from '@/lib/intelligence/rules';
 import prisma from '@/lib/db/prisma';
+import { CANONICAL_PROJECTS } from '@/lib/data/canonical';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,59 +37,79 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch projects with related data
-    const projects = await prisma.projectWork.findMany({
-      where,
-      include: {
-        milestones: true,
-        inspections: { orderBy: { createdAt: 'desc' } },
-        grievances: { where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED'] } } },
-        varianceFlags: { orderBy: { triggeredDate: 'desc' }, take: 1 },
-      },
-    });
+    let projects: any[] = [];
+    let allProjects: any[] = [];
 
-    const now = new Date();
-    const allProjects = await prisma.projectWork.findMany({
-      select: {
-        id: true,
-        contractor: true,
-        latitude: true,
-        longitude: true,
-        title: true,
-        district: true,
-        state: true,
-        plannedEndDate: true,
-        plannedStartDate: true,
-        actualStartDate: true,
-        actualEndDate: true,
-        physicalCompletionPct: true,
-        financialSanction: true,
-        sanctionedCost: true,
-        fundReleased: true,
-        expenditure: true,
-        status: true,
-        workCode: true,
-        scheme: true,
-        fundingAgency: true,
-        sanctionDate: true,
-        revisedCost: true,
-        coDistrict: true,
-        adcArea: true,
-        block: true,
-        implementingAgency: true,
-        executingOfficer: true,
-        technicalSanctionRef: true,
-        villageWard: true,
-        imagePath: true,
-        ucStatus: true,
-        pendingAmount: true,
-        lastInspectionDate: true,
-        outcomeIndicators: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    try {
+      projects = await prisma.projectWork.findMany({
+        where,
+        include: {
+          milestones: true,
+          inspections: { orderBy: { createdAt: 'desc' } },
+          grievances: { where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED'] } } },
+          varianceFlags: { orderBy: { triggeredDate: 'desc' }, take: 1 },
+        },
+      });
+
+      allProjects = await prisma.projectWork.findMany({
+        select: {
+          id: true,
+          contractor: true,
+          latitude: true,
+          longitude: true,
+          title: true,
+          district: true,
+          state: true,
+          plannedEndDate: true,
+          plannedStartDate: true,
+          actualStartDate: true,
+          actualEndDate: true,
+          physicalCompletionPct: true,
+          financialSanction: true,
+          sanctionedCost: true,
+          fundReleased: true,
+          expenditure: true,
+          status: true,
+          workCode: true,
+          scheme: true,
+          fundingAgency: true,
+          sanctionDate: true,
+          revisedCost: true,
+          coDistrict: true,
+          adcArea: true,
+          block: true,
+          implementingAgency: true,
+          executingOfficer: true,
+          technicalSanctionRef: true,
+          villageWard: true,
+          imagePath: true,
+          ucStatus: true,
+          pendingAmount: true,
+          lastInspectionDate: true,
+          outcomeIndicators: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+    } catch (dbErr) {
+      console.warn('Dashboard DB query fallback to canonical:', dbErr);
+    }
+
+    if (projects.length === 0) {
+      projects = CANONICAL_PROJECTS.map(p => ({
+        ...p,
+        financialSanction: p.sanctionedCost,
+        expenditure: p.fundReleased,
+        milestones: p.milestones || [],
+        inspections: p.inspections || [],
+        grievances: [],
+        varianceFlags: [],
+      }));
+      allProjects = projects;
+    }
 
     // Calculate intelligence for each project
+    const now = new Date();
     let stalledCount = 0;
     let mismatchCount = 0;
     let criticalRiskCount = 0;

@@ -1,41 +1,60 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { 
   Building2, MapPin, AlertTriangle, CheckCircle2,
-  ArrowUpRight, Search, Download, FileSpreadsheet
+  ArrowUpRight, Search, Download, FileSpreadsheet, Plus,
+  Layers, ShieldAlert, Sparkles, Activity, Clock, Users,
+  CheckCheck, AlertCircle, FileText, ChevronRight
 } from 'lucide-react';
+import { 
+  CANONICAL_PROJECTS, 
+  CANONICAL_SCHEMES, 
+  CANONICAL_EVENTS,
+  CanonicalProject,
+  CanonicalEvent
+} from '@/lib/data/canonical';
+import RegisterSchemeModal from '@/components/RegisterSchemeModal';
 
-interface ProjectItem {
-  id: string;
-  workCode: string;
-  title: string;
-  scheme: string;
-  district: string;
-  coDistrict: string;
-  sanctionedCost: number;
-  expenditure: number;
-  physicalCompletionPct: number;
-  status: string;
-  ucStatus: string;
-  latitude: number;
-  longitude: number;
-  varianceFlags?: any[];
-}
+// Dynamically import client-only Leaflet GIS component
+const GisWorkspace = dynamic(() => import('@/components/GisWorkspace'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[360px] lg:h-[500px] rounded-2xl bg-surface dark:bg-slate-900 border border-line dark:border-slate-800 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-2">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-ink-muted dark:text-slate-400">Loading GIS Telemetry Workspace...</span>
+      </div>
+    </div>
+  )
+});
+
+type UserRole = 
+  | 'CITIZEN' 
+  | 'CO_DISTRICT' 
+  | 'FIELD_OFFICER' 
+  | 'DC_COMMISSIONER' 
+  | 'STATE_PLANNING' 
+  | 'MDONER_NEC';
 
 export default function DashboardPage() {
   const { t } = useLanguage();
-  const [role, setRole] = useState<'CITIZEN' | 'FIELD_OFFICER' | 'DC_COMMISSIONER'>('CITIZEN');
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<UserRole>('DC_COMMISSIONER');
+  const [projects, setProjects] = useState<CanonicalProject[]>(CANONICAL_PROJECTS);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [activeProject, setActiveProject] = useState<ProjectItem | null>(null);
+  const [activeProject, setActiveProject] = useState<CanonicalProject | null>(CANONICAL_PROJECTS[0]);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [eventCategoryFilter, setEventCategoryFilter] = useState<'ALL' | 'FIELD' | 'FINANCIAL' | 'ADMINISTRATIVE' | 'CITIZEN' | 'SYSTEM'>('ALL');
+  const [summonAlert, setSummonAlert] = useState<string | null>(null);
 
+  // Load from API with canonical fallback
   useEffect(() => {
     const loadProjects = async () => {
       setLoading(true);
@@ -44,28 +63,32 @@ export default function DashboardPage() {
         if (selectedDistrict !== 'ALL') url += `&district=${encodeURIComponent(selectedDistrict)}`;
         if (selectedStatus !== 'ALL') url += `&status=${selectedStatus}`;
         const res = await fetch(url);
-        const data = await res.json();
-        if (data.success && data.projects) {
-          setProjects(data.projects);
-          if (data.projects.length > 0) {
-            setActiveProject((prev) => prev || data.projects[0]);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.projects && data.projects.length > 0) {
+            setProjects(data.projects);
+            if (!activeProject) setActiveProject(data.projects[0]);
+            return;
           }
         }
       } catch {
-        // Fallback local items if API is temporarily unavailable
+        // Deterministic fallback to canonical dataset
       } finally {
         setLoading(false);
       }
     };
     loadProjects();
-  }, [role, selectedDistrict, selectedStatus]);
+  }, [selectedDistrict, selectedStatus]);
 
-  const switchRole = async (newRole: 'CITIZEN' | 'FIELD_OFFICER' | 'DC_COMMISSIONER') => {
+  const switchRole = async (newRole: UserRole) => {
     setRole(newRole);
-    const emailMap = {
+    const emailMap: Record<UserRole, string> = {
       CITIZEN: 'citizen@demo.yojna',
+      CO_DISTRICT: 'codistrict@demo.yojna',
       FIELD_OFFICER: 'officer@demo.yojna',
       DC_COMMISSIONER: 'dc@demo.yojna',
+      STATE_PLANNING: 'planning@demo.yojna',
+      MDONER_NEC: 'mdoner@demo.yojna'
     };
     try {
       await fetch('/api/auth/login', {
@@ -74,340 +97,495 @@ export default function DashboardPage() {
         body: JSON.stringify({ email: emailMap[newRole], password: 'demo123' }),
       });
     } catch {
-      // Ignore
+      // Offline fallback
     }
   };
 
-  const filteredProjects = projects.filter((p) => {
-    if (search.trim() === '') return true;
-    const q = search.toLowerCase();
-    return (
-      p.title.toLowerCase().includes(q) ||
-      p.workCode.toLowerCase().includes(q) ||
-      p.district.toLowerCase().includes(q) ||
-      p.scheme.toLowerCase().includes(q)
-    );
-  });
+  const handleProjectRegistered = (newProj: CanonicalProject) => {
+    setProjects(prev => [newProj, ...prev]);
+    setActiveProject(newProj);
+  };
 
-  // Calculate statistics
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      if (selectedDistrict !== 'ALL' && p.district !== selectedDistrict) return false;
+      if (selectedStatus !== 'ALL' && p.status !== selectedStatus) return false;
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        p.title.toLowerCase().includes(q) ||
+        p.workCode.toLowerCase().includes(q) ||
+        p.district.toLowerCase().includes(q) ||
+        p.scheme.toLowerCase().includes(q) ||
+        p.coDistrict.toLowerCase().includes(q)
+      );
+    });
+  }, [projects, selectedDistrict, selectedStatus, search]);
+
+  // Statistics
   const totalSanctioned = projects.reduce((acc, p) => acc + p.sanctionedCost, 0);
-  const totalExpenditure = projects.reduce((acc, p) => acc + p.expenditure, 0);
+  const totalExpenditure = projects.reduce((acc, p) => acc + (p.expenditure || p.fundReleased || 0), 0);
   const anomalies = projects.filter((p) => {
-    const finPct = p.sanctionedCost > 0 ? (p.expenditure / p.sanctionedCost) * 100 : 0;
-    return finPct - p.physicalCompletionPct > 20 || p.status === 'STALLED';
+    const finPct = p.sanctionedCost > 0 ? ((p.fundReleased || p.expenditure) / p.sanctionedCost) * 100 : 0;
+    return finPct - p.physicalCompletionPct > 15 || p.status === 'STALLED' || p.stalledAlert;
   });
 
   const avgCompletion = projects.length > 0 
     ? (projects.reduce((acc, p) => acc + p.physicalCompletionPct, 0) / projects.length).toFixed(1)
-    : '78.4';
+    : '54.2';
+
+  // Filtered Events
+  const filteredEvents = useMemo(() => {
+    if (eventCategoryFilter === 'ALL') return CANONICAL_EVENTS;
+    return CANONICAL_EVENTS.filter(e => ((e as any).type || (e as any).category) === eventCategoryFilter);
+  }, [eventCategoryFilter]);
+
+  // Flagship Demo Scenario Work (AS-DAR-0821)
+  const flagshipWork = projects.find(p => p.workCode === 'AS-DAR-0821') || projects[0];
+
+  const handleSummonContractor = () => {
+    setSummonAlert('Statutory Notice Dispatched: DC Office summoned Executive Engineer (PHED) & Contractor for AS-DAR-0821 within 48 hours under GFR Rule 238.');
+    setTimeout(() => setSummonAlert(null), 8000);
+  };
 
   return (
     <div className="w-full min-h-screen bg-surface dark:bg-slate-950/50 pt-24 pb-28 px-4 sm:px-8 max-w-7xl mx-auto flex flex-col gap-8 transition-colors">
+      
       {/* ============================================================== */}
-      {/* 1. HEADER & ROLE SWITCHER SHELL                                */}
+      {/* 1. HEADER & 6-ROLE OPERATIONAL SWITCHER SHELL                 */}
       {/* ============================================================== */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 pb-6 border-b border-line dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <span className="w-2 h-2 rounded-full bg-secondary dark:bg-sky-400 animate-pulse" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-primary dark:text-sky-400">
-              {t.dashOverview || 'State Infrastructure Reconciliation Overview'}
+            <span className="w-2.5 h-2.5 rounded-full bg-secondary dark:bg-sky-400 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary dark:text-sky-400">
+              {t.dashOverview || 'State Decentralised Infrastructure Reconciliation'}
             </span>
           </div>
           <h1 className="editorial-headline text-3xl sm:text-4xl text-ink dark:text-slate-100">
             Cross-Referencing Treasury Disbursements Against <em className="text-primary dark:text-sky-400">Satellite &amp; Ground Telemetry</em>
           </h1>
           <p className="text-xs sm:text-sm text-ink-muted dark:text-slate-300 mt-1">
-            Real-time physical-financial ledger covering all 35 territorial districts of Assam.
+            Real-time multi-tier physical-financial reconciliation across all 35 territorial districts &amp; Sixth Schedule ADCs of Assam.
           </p>
         </div>
 
-        {/* Role Quick-Switcher Pills & Export Button */}
+        {/* Action Buttons: Register Scheme Work & Export */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 p-1 bg-white dark:bg-slate-900 rounded-full border border-line dark:border-slate-800 shadow-xs overflow-x-auto no-scrollbar max-w-full">
-            <span className="text-[10px] font-medium text-ink-muted dark:text-slate-400 px-2.5">Perspective:</span>
-            {(['CITIZEN', 'FIELD_OFFICER', 'DC_COMMISSIONER'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => switchRole(r)}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-all whitespace-nowrap ${
-                  role === r
-                    ? 'bg-primary text-white shadow-xs'
-                    : 'text-ink-muted dark:text-slate-300 hover:text-ink hover:bg-surface dark:hover:bg-slate-800'
-                }`}
-              >
-                {r === 'CITIZEN' ? (t.dashRoleCitizen || 'Citizen') : r === 'FIELD_OFFICER' ? (t.dashRoleOfficer || 'Field Officer') : (t.dashRoleDC || 'Auditor / DC')}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setIsRegisterModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Register Scheme Work</span>
+          </button>
 
           <a
-            href="/api/audit/logs?limit=50"
-            download="drishti_audit_ledger.json"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-blue-700 text-white text-xs font-medium shadow-xs transition-colors shrink-0"
+            href="/api/projects"
+            download="drishti_schemes_canonical.json"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-ink dark:text-slate-200 text-xs font-medium border border-line dark:border-slate-700 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>{t.dashExportBtn || 'Export Verified Audit'}</span>
+            <span>Export Verified Ledger</span>
           </a>
         </div>
       </div>
 
+      {/* 6 Role-Based Perspective Switcher Pills */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-ink-muted dark:text-slate-400 uppercase tracking-wider">
+            Operational Perspective (6 Statutory Roles):
+          </span>
+          <span className="text-[11px] text-primary dark:text-sky-400 font-medium">
+            Active: {role.replace('_', ' ')}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 p-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-line dark:border-slate-800 shadow-xs overflow-x-auto no-scrollbar">
+          {(
+            [
+              { key: 'DC_COMMISSIONER', label: '1. District Commissioner (DC)', icon: ShieldAlert },
+              { key: 'CO_DISTRICT', label: '2. Co-District Comm.', icon: Building2 },
+              { key: 'FIELD_OFFICER', label: '3. Block / ADC Officer', icon: MapPin },
+              { key: 'STATE_PLANNING', label: '4. State Planning Dept', icon: FileSpreadsheet },
+              { key: 'MDONER_NEC', label: '5. MDoNER / NEC', icon: Layers },
+              { key: 'CITIZEN', label: '6. Citizen / Gram Sabha', icon: Users },
+            ] as const
+          ).map((item) => {
+            const Icon = item.icon;
+            const isSelected = role === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => switchRole(item.key)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  isSelected
+                    ? 'bg-primary text-white shadow-sm ring-2 ring-primary/20'
+                    : 'text-ink-muted dark:text-slate-300 hover:text-ink hover:bg-surface dark:hover:bg-slate-800'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-primary dark:text-sky-400'}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Statutory Summon Notice Toast */}
+      {summonAlert && (
+        <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/80 border border-red-300 dark:border-red-800 flex items-start justify-between gap-3 text-red-900 dark:text-red-200 text-xs animate-fade-in shadow-md">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Statutory Executive Directive Issued:</span> {summonAlert}
+            </div>
+          </div>
+          <button onClick={() => setSummonAlert(null)} className="font-bold hover:underline">Dismiss</button>
+        </div>
+      )}
+
       {/* ============================================================== */}
-      {/* 2. RECONCILIATION SUMMARY TILES (Stitch 4 Ticket Cards)        */}
+      {/* 2. ROLE-TAILORED OPERATIONAL DESK PANELS                       */}
       {/* ============================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Card 1: Glacier Sky-Blue Ticket Card */}
-        <div className="ticket-card rounded-2xl p-6 min-h-[180px] shadow-sm flex flex-col justify-between group">
+      {role === 'DC_COMMISSIONER' && (
+        <div className="p-5 rounded-2xl bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 shadow-xs flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-5 h-5 text-red-600" />
+              <h3 className="text-sm font-bold text-red-900 dark:text-red-200">
+                DC Weekly Exception Review Queue — Stalled Schemes &amp; Physical Variance Alerts
+              </h3>
+            </div>
+            <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-200">
+              {anomalies.length} Exceptions Requiring Executive Action
+            </span>
+          </div>
+
+          <p className="text-xs text-red-800/80 dark:text-red-300">
+            Statutory review under Rule 238 of GFR: Flags works where treasury release exceeds verified field milestones by &gt;15%, or geo-tagged inspection is overdue &gt;60 days.
+          </p>
+
+          {/* Signature Flagship Demo Scenario Box */}
+          {flagshipWork && (
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-red-300 dark:border-red-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-red-700 dark:text-red-400">
+                    {flagshipWork.workCode}
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                    CRITICAL: 74-DAY STALLED INSPECTION
+                  </span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                    {flagshipWork.scheme}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-ink dark:text-slate-100">
+                  {flagshipWork.title} — {flagshipWork.coDistrict}, {flagshipWork.district}
+                </h4>
+                <div className="text-xs text-ink-muted dark:text-slate-300 flex flex-wrap items-center gap-3">
+                  <span>Sanctioned: <strong>₹{flagshipWork.sanctionedCost} Cr</strong></span>
+                  <span>•</span>
+                  <span>Disbursed: <strong className="text-red-600">₹{flagshipWork.fundReleased} Cr (80%)</strong></span>
+                  <span>•</span>
+                  <span>Verified Physical: <strong className="text-amber-600">{flagshipWork.physicalCompletionPct}%</strong></span>
+                  <span>•</span>
+                  <span className="text-red-600 font-semibold">Variance Gap: +45% ahead</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleSummonContractor}
+                  className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-all"
+                >
+                  Summon Contractor (48h)
+                </button>
+                <Link
+                  href={`/asset/${flagshipWork.workCode}`}
+                  className="px-3.5 py-2 rounded-xl bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-ink dark:text-slate-100 text-xs font-medium border border-line dark:border-slate-700 transition-colors"
+                >
+                  Inspect Plaque →
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {role === 'CO_DISTRICT' && (
+        <div className="p-5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 shadow-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              <h3 className="text-sm font-bold text-blue-950 dark:text-blue-200">
+                Co-District Commissioner Operational Bottleneck Desk
+              </h3>
+            </div>
+            <span className="text-xs font-medium text-primary dark:text-sky-400">Sipajhar, Bajali, Rangia, Titabor, Haflong Subdivisions</span>
+          </div>
+          <p className="text-xs text-blue-900/80 dark:text-blue-300">
+            Dedicated execution monitoring for newly formed Co-Districts in Assam: tracks subdivision contractors, right-of-way clearances, and Gram Sabha project handovers.
+          </p>
+        </div>
+      )}
+
+      {role === 'FIELD_OFFICER' && (
+        <div className="p-5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 shadow-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-amber-600" />
+              <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">
+                Block &amp; Autonomous District Council (Sixth Schedule) Field Operations
+              </h3>
+            </div>
+            <Link href="/verify" className="text-xs font-semibold text-amber-800 dark:text-amber-300 hover:underline">
+              Launch Offline Geo-Verify Tool →
+            </Link>
+          </div>
+          <p className="text-xs text-amber-900/80 dark:text-amber-300">
+            Field roster for Bodoland Territorial Council (BTC), Karbi Anglong (KAAC), and Dima Hasao (NCHAC). Log offline GPS coordinates, upload geotagged proof photos, and certify milestones.
+          </p>
+        </div>
+      )}
+
+      {role === 'STATE_PLANNING' && (
+        <div className="p-5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/60 shadow-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5 text-purple-600" />
+              <h3 className="text-sm font-bold text-purple-950 dark:text-purple-200">
+                State Planning &amp; Finance Reconciliation Desk (Assam)
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">Utilisation Certificate (UC) Aging Watch</span>
+          </div>
+          <p className="text-xs text-purple-900/80 dark:text-purple-300">
+            Tracks Central vs State matching shares under NESIDS, NEC, and PM-DevINE. Enforces automatic alerts for UCs pending &gt;180 days to prevent central fund lapse.
+          </p>
+        </div>
+      )}
+
+      {role === 'MDONER_NEC' && (
+        <div className="p-5 rounded-2xl bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-900/60 shadow-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-cyan-600" />
+              <h3 className="text-sm font-bold text-cyan-950 dark:text-cyan-200">
+                Ministry of Development of North Eastern Region (MDoNER) &amp; NEC Oversight
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-300">NER Regional Strategic Balance</span>
+          </div>
+          <p className="text-xs text-cyan-900/80 dark:text-cyan-300">
+            Cross-state coordination and regional equity monitoring across Assam, Meghalaya, Arunachal, Nagaland, and Manipur borders.
+          </p>
+        </div>
+      )}
+
+      {role === 'CITIZEN' && (
+        <div className="p-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 shadow-xs flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-600" />
+              <h3 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                Citizen &amp; Gram Sabha Social Audit Portal (Zero Login Required)
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Public Domain Accountability</span>
+          </div>
+          <p className="text-xs text-emerald-900/80 dark:text-emerald-300">
+            Every citizen has the statutory right to inspect project expenditure, scan site QR plaques, view satellite proof images, and submit community grievances without administrative roadblocks.
+          </p>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 3. RECONCILIATION SUMMARY TILES (8 Metrics Strip)              */}
+      {/* ============================================================== */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4">
+        {/* Card 1: Active Schemes */}
+        <div className="ticket-card rounded-2xl p-5 shadow-sm flex flex-col justify-between group">
           <div className="flex items-center justify-between text-[#0f172a]">
-            <span className="text-xs uppercase tracking-wider font-semibold">{t.dashActiveSchemes || 'Active Schemes Tracked'}</span>
+            <span className="text-[11px] uppercase tracking-wider font-semibold">Schemes Monitored</span>
             <Building2 className="w-4 h-4 text-[#1d4ed8]" />
           </div>
-          <div>
-            <div className="text-3xl lg:text-4xl font-bold tracking-tight text-[#0f172a] tabular-nums">
-              {projects.length > 0 ? (projects.length * 90 + 242).toLocaleString() : '3,842'}
+          <div className="my-2">
+            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0f172a] tabular-nums">
+              11 Schemes
             </div>
-            <div className="text-xs text-[#0f172a] font-medium mt-1">
-              ₹{totalSanctioned > 0 ? totalSanctioned.toFixed(1) : '14,280'} Cr Sanctioned
+            <div className="text-xs text-[#0f172a] font-medium mt-0.5">
+              NESIDS, NEC, PM-DevINE, Assam Darshan
             </div>
           </div>
-          <div className="pt-2.5 border-t border-[#7dd3fc] flex items-center justify-between text-[11px] text-[#334155]">
-            <span className="font-semibold text-[#1d4ed8]">+142 this month</span>
+          <div className="pt-2 border-t border-[#7dd3fc] flex items-center justify-between text-[10px] text-[#334155]">
+            <span className="font-semibold text-[#1d4ed8]">100% Statutory</span>
             <span>35 districts</span>
           </div>
         </div>
 
         {/* Card 2: Physical Progress */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between min-h-[180px]">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">{t.dashPhysicalProgress || 'Physical Progress'}</span>
+            <span className="text-[11px] uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">Avg Physical Progress</span>
             <CheckCircle2 className="w-4 h-4 text-secondary dark:text-sky-400" />
           </div>
-          <div>
-            <div className="text-3xl lg:text-4xl font-bold text-ink dark:text-slate-100 tracking-tight tabular-nums">
+          <div className="my-2">
+            <div className="text-2xl sm:text-3xl font-bold text-ink dark:text-slate-100 tracking-tight tabular-nums">
               {avgCompletion}%
             </div>
-            <div className="text-xs text-secondary dark:text-sky-400 font-medium mt-1">Average Completion</div>
+            <div className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">Verified against ground photos</div>
           </div>
-          <div className="pt-2.5 border-t border-line dark:border-slate-800 flex items-center gap-2">
+          <div className="pt-2 border-t border-line dark:border-slate-800 flex items-center gap-2">
             <div className="flex-1 h-1.5 rounded-full bg-surface dark:bg-slate-800 overflow-hidden">
               <div className="h-full bg-secondary rounded-full" style={{ width: `${avgCompletion}%` }} />
             </div>
-            <span className="text-[11px] text-ink-muted dark:text-slate-400 whitespace-nowrap">Geo-audited</span>
+            <span className="text-[10px] text-ink-muted dark:text-slate-400">Geo-audited</span>
           </div>
         </div>
 
-        {/* Card 3: Financial Utilization */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between min-h-[180px]">
+        {/* Card 3: Financial Disbursed */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">{t.dashFinancialDisbursed || 'Financial Utilization'}</span>
+            <span className="text-[11px] uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">Treasury Disbursed</span>
             <FileSpreadsheet className="w-4 h-4 text-primary dark:text-sky-400" />
           </div>
-          <div>
-            <div className="text-3xl lg:text-4xl font-bold text-ink dark:text-slate-100 tracking-tight tabular-nums">
-              ₹{totalExpenditure > 0 ? totalExpenditure.toFixed(1) : '8,492'} <span className="text-lg font-normal text-ink-muted dark:text-slate-400">Cr</span>
+          <div className="my-2">
+            <div className="text-2xl sm:text-3xl font-bold text-ink dark:text-slate-100 tracking-tight tabular-nums">
+              ₹{totalExpenditure.toFixed(1)} <span className="text-sm font-normal text-ink-muted dark:text-slate-400">Cr</span>
             </div>
-            <div className="text-xs text-ink-muted dark:text-slate-400 mt-1">Disbursed vs verified milestones</div>
+            <div className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">Of ₹{totalSanctioned.toFixed(1)} Cr Sanctioned</div>
           </div>
-          <div className="pt-2.5 border-t border-line dark:border-slate-800 flex items-center justify-between text-[11px]">
-            <span className="text-ink-muted dark:text-slate-400">Ledger match</span>
-            <span className="px-2 py-0.5 rounded-full bg-pill text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-medium">92.1% Sync</span>
+          <div className="pt-2 border-t border-line dark:border-slate-800 flex items-center justify-between text-[10px]">
+            <span className="text-ink-muted dark:text-slate-400">Release Ratio</span>
+            <span className="px-2 py-0.5 rounded-full bg-pill text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-semibold">
+              {totalSanctioned > 0 ? ((totalExpenditure / totalSanctioned) * 100).toFixed(1) : 0}%
+            </span>
           </div>
         </div>
 
         {/* Card 4: Open Anomalies */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between min-h-[180px]">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">{t.dashOpenAnomalies || 'Open Anomalies'}</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
+            <span className="text-[11px] uppercase tracking-wider text-ink-muted dark:text-slate-400 font-medium">Stalled / Variance Flags</span>
+            <AlertTriangle className="w-4 h-4 text-red-500" />
           </div>
-          <div>
-            <div className="text-3xl lg:text-4xl font-bold text-amber-600 dark:text-amber-400 tracking-tight tabular-nums">
-              {anomalies.length > 0 ? anomalies.length : 28} <span className="text-sm font-medium text-ink-muted dark:text-slate-400">Flagged</span>
+          <div className="my-2">
+            <div className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400 tracking-tight tabular-nums">
+              {anomalies.length} <span className="text-xs font-medium text-ink-muted dark:text-slate-400">Flagged</span>
             </div>
-            <div className="text-xs text-ink-muted dark:text-slate-400 mt-1">Variance &gt; 15% fund vs field</div>
+            <div className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">Variance &gt; 15% fund vs field</div>
           </div>
-          <div className="pt-2.5 border-t border-line dark:border-slate-800 flex items-center justify-between text-[11px]">
-            <span className="text-amber-600 dark:text-amber-400 font-medium">Auto-routed to DC</span>
+          <div className="pt-2 border-t border-line dark:border-slate-800 flex items-center justify-between text-[10px]">
+            <span className="text-red-600 dark:text-red-400 font-semibold">Auto-routed to DC</span>
             <Link href="/insights" className="text-primary dark:text-sky-400 hover:underline">Inspect →</Link>
           </div>
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 3. INTERACTIVE GIS SCHEME PROGRESS MAP & ANOMALY RAIL           */}
+      {/* 4. INTERACTIVE LEAFLET GIS SCHEME WORKSPACE                    */}
       {/* ============================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: GIS Scheme Location Grid & Interactive Map Canvas */}
-        <div className="lg:col-span-2 rounded-[24px] bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-sm p-6 flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-ink dark:text-slate-100">{t.dashGisMapHeader || 'Interactive GIS Scheme Cartography'}</h2>
-              <p className="text-xs text-ink-muted dark:text-slate-300">Live telemetry layer with spatial cadastral pins</p>
-            </div>
+      <GisWorkspace
+        projects={projects}
+        activeProject={activeProject}
+        onSelectProject={(proj) => setActiveProject(proj)}
+      />
+
+      {/* ============================================================== */}
+      {/* 5. REAL-TIME ACTIVITY LEDGER (FIELD, FIN, ADMIN, CITIZEN, SYS)  */}
+      {/* ============================================================== */}
+      <div className="rounded-[24px] bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-sm p-6 flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-ink-muted dark:text-slate-400">District:</span>
-              <select
-                value={selectedDistrict}
-                onChange={(e) => setSelectedDistrict(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-full bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
-              >
-                <option value="ALL">All Districts (35)</option>
-                <option value="Darrang">Darrang</option>
-                <option value="Kamrup">Kamrup</option>
-                <option value="Jorhat">Jorhat</option>
-                <option value="Dhubri">Dhubri</option>
-                <option value="Majuli">Majuli</option>
-              </select>
+              <Activity className="w-5 h-5 text-secondary dark:text-sky-400" />
+              <h2 className="text-lg font-semibold text-ink dark:text-slate-100">
+                Real-Time Decentralised Scheme Activity Ledger
+              </h2>
             </div>
+            <p className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">
+              Live tamper-evident event stream capturing inspections, disbursements, DC notices, and Gram Sabha reports.
+            </p>
           </div>
 
-          {/* Stylized GIS Map Canvas with Interactive Geo-Pins */}
-          <div className="relative w-full h-[280px] sm:h-[320px] rounded-2xl bg-[#eef4fc] dark:bg-slate-950 border border-line dark:border-slate-800 overflow-hidden flex items-center justify-center">
-            {/* Background topographic contour lines */}
-            <svg className="absolute inset-0 w-full h-full opacity-25 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M0,80 Q300,120 600,60 T1200,90" fill="none" stroke="#1d4ed8" strokeWidth="1.5" />
-              <path d="M0,160 Q400,210 800,140 T1200,190" fill="none" stroke="#1d4ed8" strokeWidth="1.5" />
-              <path d="M0,240 Q350,290 700,220 T1200,260" fill="none" stroke="#1d4ed8" strokeWidth="1.5" />
-            </svg>
-
-            {/* River Brahmaputra ribbon representation */}
-            <path
-              d="M 20 280 C 180 260, 320 180, 500 190 C 700 200, 850 140, 1000 120"
-              fill="none"
-              stroke="#0284c7"
-              strokeWidth="12"
-              strokeOpacity="0.25"
-              strokeLinecap="round"
-            />
-
-            {/* Interactive Geo-Pin Markers */}
-            <div className="absolute inset-0 p-6 pointer-events-none">
-              {projects.slice(0, 8).map((proj, idx) => {
-                const isSelected = activeProject?.id === proj.id;
-                const leftPos = 15 + ((idx * 19 + 7) % 70);
-                const topPos = 20 + ((idx * 23 + 11) % 60);
-
-                return (
-                  <button
-                    key={proj.id}
-                    onClick={() => setActiveProject(proj)}
-                    style={{ left: `${leftPos}%`, top: `${topPos}%` }}
-                    className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 p-1.5 rounded-full shadow-md transition-all duration-200 ${
-                      isSelected
-                        ? 'scale-125 z-30 ring-4 ring-primary/30 bg-primary text-white'
-                        : proj.status === 'STALLED'
-                        ? 'bg-red-600 text-white hover:scale-110 z-10'
-                        : proj.status === 'COMPLETED'
-                        ? 'bg-secondary text-white hover:scale-110 z-10'
-                        : 'bg-white dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 hover:scale-110 z-10'
-                    }`}
-                    title={`${proj.workCode} - ${proj.title}`}
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Floating Active Scheme Preview Pin Badge with Site Thumbnail */}
-            {activeProject && (
-              <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:max-w-md glass-pill p-3 rounded-2xl shadow-lg border border-line dark:border-slate-800 z-20 flex items-center justify-between gap-3">
-                <div className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 border border-line dark:border-slate-700">
-                  <Image
-                    src={activeProject.scheme.includes('Jal') ? '/images/water-project.jpg' : activeProject.scheme.includes('Bridge') ? '/images/road-bridge.jpg' : '/images/river-embankment.jpg'}
-                    alt="Site proof thumbnail"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-[10px] text-primary dark:text-sky-400 font-semibold">{activeProject.workCode}</span>
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-medium ${
-                      activeProject.status === 'STALLED' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-pill text-blue-900 dark:bg-blue-950 dark:text-blue-200'
-                    }`}>
-                      {activeProject.status}
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-semibold text-ink dark:text-slate-100 truncate">{activeProject.title}</h4>
-                  <div className="text-[11px] text-ink-muted dark:text-slate-300 flex items-center gap-2">
-                    <span>{activeProject.district}</span>
-                    <span>•</span>
-                    <span>₹{activeProject.sanctionedCost} Cr</span>
-                    <span>•</span>
-                    <span className="text-secondary dark:text-sky-400 font-medium">{activeProject.physicalCompletionPct}% done</span>
-                  </div>
-                </div>
-                <Link
-                  href={`/asset/${activeProject.workCode}`}
-                  className="px-3 py-1.5 bg-primary hover:bg-blue-700 text-white text-xs rounded-full font-medium shadow-xs flex items-center gap-1 flex-shrink-0"
-                >
-                  <span>Card</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </Link>
-              </div>
-            )}
+          {/* Event Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 p-1 bg-surface dark:bg-slate-800 rounded-xl border border-line dark:border-slate-700">
+            {(['ALL', 'FIELD', 'FINANCIAL', 'ADMINISTRATIVE', 'CITIZEN', 'SYSTEM'] as const).map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setEventCategoryFilter(cat)}
+                className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+                  eventCategoryFilter === cat
+                    ? 'bg-white dark:bg-slate-700 text-primary dark:text-sky-400 shadow-xs'
+                    : 'text-ink-muted dark:text-slate-400 hover:text-ink'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Right Col: Anomaly Alert Rail */}
-        <div className="rounded-[24px] bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-sm p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-line dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                <h3 className="text-sm font-semibold text-ink dark:text-slate-100">{t.dashAnomalyRail || 'Anomaly Alert Rail'}</h3>
+        {/* Ledger Event Items */}
+        <div className="divide-y divide-line dark:divide-slate-800">
+          {filteredEvents.map((evt) => {
+            const getBadgeColor = (category: string) => {
+              switch (category) {
+                case 'FIELD': return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300';
+                case 'FINANCIAL': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+                case 'ADMINISTRATIVE': return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300';
+                case 'CITIZEN': return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+                case 'SYSTEM': return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300';
+                default: return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+              }
+            };
+
+            const evtCategory = (evt as any).type || (evt as any).category || 'SYSTEM';
+            const evtWorkCode = (evt as any).projectWorkCode || (evt as any).workCode || '';
+
+            return (
+              <div key={evt.id} className="py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 hover:bg-surface/40 dark:hover:bg-slate-800/30 transition-colors px-2 rounded-xl">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getBadgeColor(evtCategory)}`}>
+                      {evtCategory}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-primary dark:text-sky-400">
+                      {evtWorkCode}
+                    </span>
+                    <span className="text-[11px] text-ink-muted dark:text-slate-400">
+                      {evt.district} {evt.coDistrict ? `(${evt.coDistrict})` : ''}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-semibold text-ink dark:text-slate-100">
+                    {evt.title}
+                  </h4>
+                  <p className="text-[11px] text-ink-muted dark:text-slate-300">
+                    {evt.description}
+                  </p>
+                </div>
+
+                <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto shrink-0 text-[11px] text-ink-muted dark:text-slate-400 gap-1">
+                  <span className="font-mono text-[10px]">{new Date(evt.timestamp).toLocaleString()}</span>
+                  <span className="text-[10px] font-medium text-slate-500">By {evt.actor}</span>
+                  <Link
+                    href={`/asset/${evtWorkCode}`}
+                    className="text-primary dark:text-sky-400 hover:underline inline-flex items-center gap-0.5 text-[11px] font-semibold mt-0.5"
+                  >
+                    View Card →
+                  </Link>
+                </div>
               </div>
-              <span className="text-[10px] bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full font-semibold">
-                {anomalies.length} Flags
-              </span>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {anomalies.slice(0, 4).map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => setActiveProject(p)}
-                  className="p-3 rounded-xl bg-surface/70 dark:bg-slate-800/50 border border-line dark:border-slate-800 hover:border-primary transition-all cursor-pointer space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] text-ink-muted dark:text-slate-400">{p.workCode}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 font-semibold">
-                      Variance Alert
-                    </span>
-                  </div>
-                  <div className="text-xs font-medium text-ink dark:text-slate-100 line-clamp-1">{p.title}</div>
-                  <div className="text-[10px] text-ink-muted dark:text-slate-400 flex items-center gap-2">
-                    <span>{p.district}</span>
-                    <span>•</span>
-                    <span className="text-red-600 dark:text-red-400 font-medium">
-                      Phys: {p.physicalCompletionPct}% vs Fin: {p.sanctionedCost > 0 ? ((p.expenditure / p.sanctionedCost) * 100).toFixed(0) : 0}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {anomalies.length === 0 && (
-                <div className="text-center py-8 text-xs text-ink-muted dark:text-slate-400">
-                  No active anomalies detected across current selection.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-line dark:border-slate-800 mt-4">
-            <Link
-              href="/insights"
-              className="w-full py-2 bg-surface hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-ink dark:text-slate-100 text-xs font-medium rounded-full border border-line dark:border-slate-700 flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <span>Explainable AI Root Cause Analysis</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
+            );
+          })}
         </div>
       </div>
 
       {/* ============================================================== */}
-      {/* 4. RECONCILIATION LEDGER TABLE WITH DIRECT AUDIT ACTIONS       */}
+      {/* 6. RECONCILIATION LEDGER TABLE WITH DIRECT AUDIT ACTIONS       */}
       {/* ============================================================== */}
       <div className="rounded-[24px] bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-sm p-6 flex flex-col gap-5">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -436,7 +614,7 @@ export default function DashboardPage() {
               className="text-xs px-3 py-1.5 rounded-full bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
             >
               <option value="ALL">All Statuses</option>
-              <option value="IN_PROGRESS">In Progress</option>
+              <option value="ONGOING">Ongoing</option>
               <option value="COMPLETED">Completed</option>
               <option value="STALLED">Stalled</option>
             </select>
@@ -458,7 +636,7 @@ export default function DashboardPage() {
             </thead>
             <tbody className="divide-y divide-line dark:divide-slate-800 text-xs">
               {filteredProjects.map((p) => {
-                const finPct = p.sanctionedCost > 0 ? ((p.expenditure / p.sanctionedCost) * 100).toFixed(0) : '0';
+                const finPct = p.sanctionedCost > 0 ? (((p.fundReleased || p.expenditure) / p.sanctionedCost) * 100).toFixed(0) : '0';
                 return (
                   <tr key={p.id} className="hover:bg-surface/50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="py-3 px-3">
@@ -468,11 +646,11 @@ export default function DashboardPage() {
                     </td>
                     <td className="py-3 px-3 text-ink-muted dark:text-slate-300">
                       <div>{p.district}</div>
-                      <div className="text-[10px] text-ink-muted dark:text-slate-400">{p.coDistrict}</div>
+                      <div className="text-[10px] text-ink-muted dark:text-slate-400">Co: {p.coDistrict}</div>
                     </td>
                     <td className="py-3 px-3 tabular-nums">
                       <div className="font-medium text-ink dark:text-slate-100">₹{p.sanctionedCost} Cr</div>
-                      <div className="text-[10px] text-ink-muted dark:text-slate-400">Spent: ₹{p.expenditure} Cr ({finPct}%)</div>
+                      <div className="text-[10px] text-ink-muted dark:text-slate-400">Spent: ₹{p.fundReleased || p.expenditure} Cr ({finPct}%)</div>
                     </td>
                     <td className="py-3 px-3 tabular-nums">
                       <div className="flex items-center gap-2">
@@ -524,7 +702,7 @@ export default function DashboardPage() {
         {/* Mobile Stacked Ledger Cards (md:hidden) */}
         <div className="md:hidden space-y-3">
           {filteredProjects.map((p) => {
-            const finPct = p.sanctionedCost > 0 ? ((p.expenditure / p.sanctionedCost) * 100).toFixed(0) : '0';
+            const finPct = p.sanctionedCost > 0 ? (((p.fundReleased || p.expenditure) / p.sanctionedCost) * 100).toFixed(0) : '0';
             return (
               <div
                 key={p.id}
@@ -552,7 +730,7 @@ export default function DashboardPage() {
                     {p.title}
                   </h4>
                   <div className="text-[11px] text-ink-muted dark:text-slate-400 mt-0.5">
-                    {p.scheme} • {p.district}
+                    {p.scheme} • {p.district} (Co: {p.coDistrict})
                   </div>
                 </div>
 
@@ -575,7 +753,7 @@ export default function DashboardPage() {
                 {/* Financial comparison & Inspect action */}
                 <div className="pt-2 border-t border-line/60 dark:border-slate-800 flex items-center justify-between">
                   <div className="text-[11px] text-ink-muted dark:text-slate-400">
-                    <span>₹{p.sanctionedCost} Cr</span> • <span>Spent: ₹{p.expenditure} Cr ({finPct}%)</span>
+                    <span>₹{p.sanctionedCost} Cr</span> • <span>Spent: ₹{p.fundReleased || p.expenditure} Cr ({finPct}%)</span>
                   </div>
                   <Link
                     href={`/asset/${p.workCode}`}
@@ -595,6 +773,13 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Register Scheme Modal */}
+      <RegisterSchemeModal
+        isOpen={isRegisterModalOpen}
+        onClose={() => setIsRegisterModalOpen(false)}
+        onProjectRegistered={handleProjectRegistered}
+      />
     </div>
   );
 }

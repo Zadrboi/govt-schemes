@@ -11,6 +11,7 @@ import {
 } from '@/lib/intelligence/rules';
 import prisma from '@/lib/db/prisma';
 import QRCode from 'qrcode';
+import { CANONICAL_PROJECTS } from '@/lib/data/canonical';
 
 export async function GET(
   request: NextRequest,
@@ -20,19 +21,82 @@ export async function GET(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const project = await prisma.projectWork.findFirst({
-      where: {
-        OR: [{ id }, { workCode: id }],
-      },
-      include: {
-        milestones: { orderBy: { plannedDate: 'asc' } },
-        inspections: { orderBy: { createdAt: 'desc' } },
-        grievances: { orderBy: { createdAt: 'desc' } },
-        varianceFlags: { orderBy: { triggeredDate: 'desc' } },
-      },
-    });
+    let project: any = null;
+    try {
+      project = await prisma.projectWork.findFirst({
+        where: {
+          OR: [{ id }, { workCode: id }],
+        },
+        include: {
+          milestones: { orderBy: { plannedDate: 'asc' } },
+          inspections: { orderBy: { createdAt: 'desc' } },
+          grievances: { orderBy: { createdAt: 'desc' } },
+          varianceFlags: { orderBy: { triggeredDate: 'desc' } },
+        },
+      });
+    } catch (dbErr) {
+      console.warn('DB project query fallback to canonical:', dbErr);
+    }
 
     if (!project) {
+      const canonicalMatch = CANONICAL_PROJECTS.find(
+        p => p.id === id || p.workCode.toLowerCase() === id.toLowerCase()
+      );
+      if (canonicalMatch) {
+        const qrPayload = JSON.stringify({
+          v: 1,
+          id: canonicalMatch.workCode,
+          title: canonicalMatch.title,
+          scheme: canonicalMatch.scheme,
+          district: canonicalMatch.district,
+          coords: [canonicalMatch.latitude, canonicalMatch.longitude],
+          status: canonicalMatch.status,
+          physical: canonicalMatch.physicalCompletionPct,
+          financial: canonicalMatch.sanctionedCost > 0 ? Math.round((canonicalMatch.fundReleased / canonicalMatch.sanctionedCost) * 100) : 0,
+          updated: new Date().toISOString(),
+        });
+
+        const qrCodeDataUrl = await QRCode.toDataURL(qrPayload, {
+          width: 256,
+          margin: 2,
+          errorCorrectionLevel: 'M',
+        });
+
+        const finPct = Math.min(100, Math.round((canonicalMatch.fundReleased / canonicalMatch.sanctionedCost) * 100));
+        const physPct = canonicalMatch.physicalCompletionPct;
+
+        const enriched = {
+          ...canonicalMatch,
+          financialSanction: canonicalMatch.sanctionedCost,
+          expenditure: canonicalMatch.fundReleased,
+          intelligence: {
+            stalledWork: {
+              isStalled: canonicalMatch.status === 'STALLED' || canonicalMatch.stalledAlert || false,
+              stalledDays: canonicalMatch.daysSinceLastInspection || 74,
+              threshold: 60,
+              severity: canonicalMatch.status === 'STALLED' ? 'CRITICAL' : 'NONE',
+            },
+            financialPhysicalMismatch: {
+              isMismatch: finPct - physPct > 15,
+              financialPct: finPct,
+              physicalPct: physPct,
+              varianceGapPct: Math.max(0, finPct - physPct),
+            },
+            delayRiskScore: { score: canonicalMatch.delayRiskScore, category: canonicalMatch.delayRiskScore > 60 ? 'HIGH' : 'LOW' },
+            evidenceScore: { total: canonicalMatch.evidenceScore },
+            duplicateDetection: { isDuplicate: false },
+          },
+          qrCode: qrCodeDataUrl,
+          qrPayload,
+        };
+
+        return NextResponse.json({
+          success: true,
+          data: enriched,
+          project: enriched,
+        });
+      }
+
       return NextResponse.json(
         { success: false, error: 'Project not found' },
         { status: 404 }
@@ -122,20 +186,23 @@ export async function GET(
       ipHash: hashIp(getClientIp(request)),
     });
 
+    const responseData = {
+      ...project,
+      intelligence: {
+        stalledWork: stalled,
+        financialPhysicalMismatch: mismatch,
+        delayRiskScore: delayRisk,
+        evidenceScore: evidence,
+        duplicateDetection: duplicate,
+      },
+      qrCode: qrCodeDataUrl,
+      qrPayload,
+    };
+
     return NextResponse.json({
       success: true,
-      data: {
-        ...project,
-        intelligence: {
-          stalledWork: stalled,
-          financialPhysicalMismatch: mismatch,
-          delayRiskScore: delayRisk,
-          evidenceScore: evidence,
-          duplicateDetection: duplicate,
-        },
-        qrCode: qrCodeDataUrl,
-        qrPayload,
-      },
+      data: responseData,
+      project: responseData,
     });
   } catch (error) {
     console.error('Get project error:', error);

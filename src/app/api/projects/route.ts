@@ -12,6 +12,7 @@ import {
 } from '@/lib/intelligence/rules';
 import prisma from '@/lib/db/prisma';
 import QRCode from 'qrcode';
+import { CANONICAL_PROJECTS } from '@/lib/data/canonical';
 
 export async function GET(request: NextRequest) {
   try {
@@ -55,21 +56,63 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const [projects, total] = await Promise.all([
-      prisma.projectWork.findMany({
-        where,
-        orderBy: { [query.sortBy]: query.sortOrder },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-        include: {
-          milestones: { orderBy: { plannedDate: 'asc' } },
-          inspections: { orderBy: { createdAt: 'desc' }, take: 5 },
-          grievances: { where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED'] } } },
-          varianceFlags: { orderBy: { triggeredDate: 'desc' }, take: 1 },
+    let projects: any[] = [];
+    let total = 0;
+
+    try {
+      const [dbProjects, dbTotal] = await Promise.all([
+        prisma.projectWork.findMany({
+          where,
+          orderBy: { [query.sortBy]: query.sortOrder },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+          include: {
+            milestones: { orderBy: { plannedDate: 'asc' } },
+            inspections: { orderBy: { createdAt: 'desc' }, take: 5 },
+            grievances: { where: { status: { in: ['SUBMITTED', 'UNDER_REVIEW', 'ACTION_REQUIRED'] } } },
+            varianceFlags: { orderBy: { triggeredDate: 'desc' }, take: 1 },
+          },
+        }),
+        prisma.projectWork.count({ where }),
+      ]);
+      projects = dbProjects;
+      total = dbTotal;
+    } catch (dbErr) {
+      console.warn('DB project query fallback to canonical:', dbErr);
+    }
+
+    // If database returned 0 projects or was unavailable on serverless
+    if (projects.length === 0) {
+      let filtered = [...CANONICAL_PROJECTS];
+      if (query.district) filtered = filtered.filter(p => p.district === query.district);
+      if (query.coDistrict) filtered = filtered.filter(p => p.coDistrict === query.coDistrict);
+      if (query.block) filtered = filtered.filter(p => p.block === query.block);
+      if (query.adcArea) filtered = filtered.filter(p => p.adcArea === query.adcArea);
+      if (query.scheme) filtered = filtered.filter(p => p.scheme === query.scheme);
+      if (query.status) filtered = filtered.filter(p => p.status === query.status);
+      if (query.search) {
+        const q = query.search.toLowerCase();
+        filtered = filtered.filter(p => 
+          p.workCode.toLowerCase().includes(q) ||
+          p.title.toLowerCase().includes(q) ||
+          (p.contractor && p.contractor.toLowerCase().includes(q)) ||
+          p.executingOfficer.toLowerCase().includes(q)
+        );
+      }
+      return NextResponse.json(
+        {
+          success: true,
+          count: filtered.length,
+          total: filtered.length,
+          page: query.page,
+          limit: query.limit,
+          totalPages: 1,
+          data: filtered,
+          projects: filtered,
         },
-      }),
-      prisma.projectWork.count({ where }),
-    ]);
+        { headers }
+      );
+    }
 
     // Enrich with intelligence
     const now = new Date();
@@ -149,6 +192,7 @@ export async function GET(request: NextRequest) {
         limit: query.limit,
         totalPages: Math.ceil(total / query.limit),
         data: enrichedProjects,
+        projects: enrichedProjects,
       },
       { headers }
     );

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { noticeQuerySchema, noticeCreateSchema } from '@/lib/validation';
 import { getCurrentUser, canManageNotices, canPublishNotices, writeAuditLog, getClientIp, hashIp, applyRateLimit } from '@/lib/security/auth';
 import prisma from '@/lib/db/prisma';
+import { CANONICAL_NOTICES } from '@/lib/data/canonical';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,15 +34,45 @@ export async function GET(request: NextRequest) {
       where.status = 'ACTIVE';
     }
 
-    const [notices, total] = await Promise.all([
-      prisma.governmentNotice.findMany({
-        where,
-        orderBy: { publishedAt: 'desc' },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-      }),
-      prisma.governmentNotice.count({ where }),
-    ]);
+    let notices: any[] = [];
+    let total = 0;
+
+    try {
+      const [dbNotices, dbTotal] = await Promise.all([
+        prisma.governmentNotice.findMany({
+          where,
+          orderBy: { publishedAt: 'desc' },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        }),
+        prisma.governmentNotice.count({ where }),
+      ]);
+      notices = dbNotices;
+      total = dbTotal;
+    } catch (dbErr) {
+      console.warn('DB notices query fallback to canonical:', dbErr);
+    }
+
+    if (notices.length === 0) {
+      let filtered = [...CANONICAL_NOTICES];
+      if (query.status) filtered = filtered.filter(n => n.status === query.status);
+      if (query.issuingAuthority) {
+        filtered = filtered.filter(n => n.issuingAuthority.toLowerCase().includes(query.issuingAuthority!.toLowerCase()));
+      }
+      return NextResponse.json(
+        {
+          success: true,
+          count: filtered.length,
+          total: filtered.length,
+          page: query.page,
+          limit: query.limit,
+          totalPages: 1,
+          data: filtered,
+          notices: filtered,
+        },
+        { headers }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -52,6 +83,7 @@ export async function GET(request: NextRequest) {
         limit: query.limit,
         totalPages: Math.ceil(total / query.limit),
         data: notices,
+        notices,
       },
       { headers }
     );

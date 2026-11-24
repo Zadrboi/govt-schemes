@@ -5,7 +5,8 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { SupportedLanguage } from '@/lib/i18n/translations';
 import { 
   Sparkles, X, Send, Bot, User, Volume2, VolumeX, 
-  ExternalLink, ThumbsUp, ThumbsDown, Loader2, MessageSquare
+  ExternalLink, ThumbsUp, ThumbsDown, Loader2, MessageSquare,
+  Mic, MicOff, Trash2, Info, CheckCheck
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -24,24 +25,40 @@ export default function SahayAIBot() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
+  // Check speech recognition support
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+      }
+    }
+  }, []);
+
+  const getWelcomeMessage = (l: SupportedLanguage) => {
     const prompts: Record<SupportedLanguage, string> = {
       en: t.sahayWelcome || 'Hello! I am Sahay AI (সহায়). Ask me about Assam development schemes, Sipajhar water project status, statutory audits, or how to file an RTPS grievance.',
       as: t.sahayWelcome || 'নমস্কাৰ! মই সহায় এআই (Sahay AI)। অসমৰ উন্নয়নমূলক আঁচনি, চিপাঝাৰ খোৱাপানী প্ৰকল্প বা অভিযোগ দাখিল সম্পৰ্কে সোধক।',
       hi: t.sahayWelcome || 'नमस्ते! मैं सहाय AI (Sahay AI) हूँ। असम विकास योजनाओं, सिपाझार पेयजल परियोजना स्थिति या आरटीपीएस शिकायत के बारे में पूछें।',
       bn: t.sahayWelcome || 'নমস্কার! আমি সহায় এআই (Sahay AI)। অসমের বিভিন্ন উন্নয়ন প্রকল্প ও সিপাহীঝাড় পানীয় জল প্রকল্প সম্পর্কে অনুসন্ধান করুন।',
     };
+    return prompts[l];
+  };
 
+  useEffect(() => {
     setMessages((prev) => {
       if (prev.length === 0 || (prev.length === 1 && prev[0].id === 'welcome')) {
         return [
           {
             id: 'welcome',
             sender: 'assistant',
-            text: prompts[lang],
+            text: getWelcomeMessage(lang),
           },
         ];
       }
@@ -55,9 +72,95 @@ export default function SahayAIBot() {
     }
   }, [messages, isLoading, isOpen]);
 
+  // Voice Input (Push-to-Talk Speech Recognition)
+  const toggleListening = () => {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    if (typeof window === 'undefined') return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in this browser. Please type your query.');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      // Select speech language
+      const langCodes: Record<SupportedLanguage, string> = {
+        en: 'en-IN',
+        as: 'as-IN',
+        hi: 'hi-IN',
+        bn: 'bn-IN',
+      };
+      recognition.lang = langCodes[lang] || 'en-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0])
+          .map((result: any) => result.transcript)
+          .join('');
+        setInput(transcript);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
+  };
+
+  // Text-to-speech for single message
+  const speakMessage = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === 'as' || lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : 'en-IN';
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleClearHistory = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setMessages([
+      {
+        id: 'welcome',
+        sender: 'assistant',
+        text: getWelcomeMessage(lang),
+      },
+    ]);
+  };
+
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -75,7 +178,7 @@ export default function SahayAIBot() {
         content: m.text,
       }));
 
-      const res = await fetch('/api/assistant', {
+      const res = await fetch('/api/assistant/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -94,17 +197,15 @@ export default function SahayAIBot() {
         const assistantMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'assistant',
-          text: data.response || data.answer || data.data?.answer || 'Response received.',
+          text: data.response || data.answer || data.data?.answer || 'Response received from statutory ledger.',
           citations: data.citations || data.data?.citations || [],
           suggestedAction: data.suggestedAction || data.data?.suggestedAction,
           evidence: data.hasSufficientEvidence ?? data.data?.hasSufficientEvidence,
         };
         setMessages((prev) => [...prev, assistantMsg]);
 
-        if (voiceEnabled && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(assistantMsg.text);
-          utterance.lang = lang === 'as' || lang === 'bn' ? 'bn-IN' : lang === 'hi' ? 'hi-IN' : 'en-IN';
-          window.speechSynthesis.speak(utterance);
+        if (voiceEnabled) {
+          speakMessage(assistantMsg.text);
         }
       } else {
         setMessages((prev) => [
@@ -122,7 +223,7 @@ export default function SahayAIBot() {
         {
           id: (Date.now() + 1).toString(),
           sender: 'assistant',
-          text: 'Network connectivity reduced. Local statutory rules: Grievance under RTPS Act requires resolution within 15 days.',
+          text: 'Network connectivity reduced. Local statutory rule: Grievance under RTPS Act requires resolution within 15 days.',
         },
       ]);
     } finally {
@@ -172,10 +273,10 @@ export default function SahayAIBot() {
           role="dialog"
           aria-label="Sahay AI Assistant Window"
           aria-modal="true"
-          className="fixed inset-x-3 bottom-16 sm:bottom-auto sm:right-auto sm:inset-auto sm:static w-auto sm:w-[420px] h-[72dvh] sm:h-[580px] max-h-[560px] sm:max-h-[85vh] bg-white dark:bg-slate-900 rounded-[22px] sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-[#e4ecf5] dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-300"
+          className="fixed inset-x-3 bottom-16 sm:bottom-auto sm:right-auto sm:inset-auto sm:static w-auto sm:w-[420px] h-[74dvh] sm:h-[600px] max-h-[580px] sm:max-h-[85vh] bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-[#e4ecf5] dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-300"
         >
           {/* Header */}
-          <div className="px-5 py-4 bg-gradient-to-r from-[#1d4ed8] to-[#0284c7] text-white flex items-center justify-between shadow-xs">
+          <div className="px-5 py-3.5 bg-gradient-to-r from-[#1d4ed8] to-[#0284c7] text-white flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-white" />
@@ -185,30 +286,52 @@ export default function SahayAIBot() {
                 <p className="text-[10px] text-blue-100 mt-1 opacity-90">{t.sahayCopilotSubtitle || 'Statutory Public Scheme Copilot'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
+              {/* Clear History */}
+              <button
+                onClick={handleClearHistory}
+                className="p-1.5 rounded-full hover:bg-white/20 text-blue-100 transition-colors"
+                title="Clear Chat History"
+                aria-label="Clear Chat History"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+
               {/* Voice Readout Toggle */}
               <button
                 onClick={() => setVoiceEnabled(!voiceEnabled)}
                 className={`p-1.5 rounded-full transition-colors ${
                   voiceEnabled ? 'bg-white/30 text-white' : 'hover:bg-white/20 text-blue-100'
                 }`}
-                title={voiceEnabled ? 'Disable Voice Readout' : 'Enable Voice Readout'}
-                aria-label={voiceEnabled ? 'Disable Voice Readout' : 'Enable Voice Readout'}
+                title={voiceEnabled ? 'Disable Automatic Voice Readout' : 'Enable Automatic Voice Readout'}
+                aria-label={voiceEnabled ? 'Disable Automatic Voice Readout' : 'Enable Automatic Voice Readout'}
               >
                 {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
+
               {/* Close Button */}
               <button
                 onClick={() => {
                   setIsOpen(false);
                   triggerRef.current?.focus();
                 }}
-                className="p-1.5 hover:bg-white/20 text-white rounded-full transition-colors"
+                className="p-1.5 hover:bg-white/20 text-white rounded-full transition-colors ml-1"
                 aria-label="Close Assistant"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
+          </div>
+
+          {/* Transparent AI Disclosure Banner */}
+          <div className="px-3.5 py-1.5 bg-blue-50/90 dark:bg-slate-800/80 border-b border-blue-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-blue-900 dark:text-blue-200">
+            <div className="flex items-center gap-1.5 truncate">
+              <Info className="w-3.5 h-3.5 text-primary dark:text-sky-400 shrink-0" />
+              <span className="truncate">AI guidance assistant — not an official departmental decision.</span>
+            </div>
+            <span className="font-mono text-[9px] uppercase tracking-wider font-semibold text-primary dark:text-sky-400 shrink-0 ml-1">
+              {lang.toUpperCase()}
+            </span>
           </div>
 
           {/* Messages Viewport */}
@@ -224,7 +347,7 @@ export default function SahayAIBot() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[82%] rounded-2xl p-3.5 leading-relaxed shadow-2xs ${
+                  className={`max-w-[84%] rounded-2xl p-3.5 leading-relaxed shadow-2xs ${
                     m.sender === 'user'
                       ? 'bg-[#1d4ed8] text-white rounded-br-xs'
                       : 'bg-white dark:bg-slate-900 text-[#0f172a] dark:text-slate-100 border border-[#e4ecf5] dark:border-slate-800 rounded-bl-xs'
@@ -260,26 +383,37 @@ export default function SahayAIBot() {
                     </div>
                   )}
 
-                  {/* Feedback Thumb controls for Assistant replies */}
-                  {m.sender === 'assistant' && m.id !== 'welcome' && (
-                    <div className="mt-2.5 flex items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60 text-slate-400">
-                      <span className="text-[10px]">Helpful?</span>
+                  {/* Assistant controls: Read Aloud & Feedback */}
+                  {m.sender === 'assistant' && (
+                    <div className="mt-2.5 flex items-center justify-between pt-1.5 border-t border-slate-100 dark:border-slate-800/60 text-slate-400 text-[10px]">
                       <button
-                        onClick={() => sendFeedback(m.id, 'HELPFUL')}
-                        className="p-1 hover:text-[#1d4ed8] transition-colors"
-                        title="Helpful response"
-                        aria-label="Helpful"
+                        onClick={() => speakMessage(m.text)}
+                        className="hover:text-primary dark:hover:text-sky-400 flex items-center gap-1 transition-colors"
+                        title="Read aloud"
                       >
-                        <ThumbsUp className="w-3 h-3" />
+                        <Volume2 className="w-3 h-3" />
+                        <span>Listen</span>
                       </button>
-                      <button
-                        onClick={() => sendFeedback(m.id, 'INCORRECT')}
-                        className="p-1 hover:text-red-500 transition-colors"
-                        title="Inaccurate response"
-                        aria-label="Inaccurate"
-                      >
-                        <ThumbsDown className="w-3 h-3" />
-                      </button>
+
+                      {m.id !== 'welcome' && (
+                        <div className="flex items-center gap-2">
+                          <span>Helpful?</span>
+                          <button
+                            onClick={() => sendFeedback(m.id, 'HELPFUL')}
+                            className="p-1 hover:text-[#1d4ed8] transition-colors"
+                            title="Helpful"
+                          >
+                            <ThumbsUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => sendFeedback(m.id, 'INCORRECT')}
+                            className="p-1 hover:text-red-500 transition-colors"
+                            title="Inaccurate"
+                          >
+                            <ThumbsDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -327,7 +461,7 @@ export default function SahayAIBot() {
             </button>
           </div>
 
-          {/* Input Form */}
+          {/* Input Form with Push-to-Talk Mic */}
           <form
             onSubmit={handleSend}
             className="p-3 bg-white dark:bg-slate-900 border-t border-[#e4ecf5] dark:border-slate-800 flex items-center gap-2"
@@ -338,10 +472,32 @@ export default function SahayAIBot() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={t.sahayInputPlaceholder || 'Ask in English, অসমীয়া, हिन्दी, or বাংলা...'}
+              placeholder={isListening ? 'Listening now (speak in English, অসমীয়া, etc.)...' : (t.sahayInputPlaceholder || 'Ask in English, অসমীয়া, हिन्दी, or বাংলা...')}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 text-base sm:text-xs rounded-full bg-[#f4f7fb] dark:bg-slate-800 text-[#0f172a] dark:text-white border border-[#e4ecf5] dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1d4ed8] transition-all"
+              className={`flex-1 px-4 py-2 text-base sm:text-xs rounded-full bg-[#f4f7fb] dark:bg-slate-800 text-[#0f172a] dark:text-white border ${
+                isListening 
+                  ? 'border-red-500 ring-2 ring-red-400/40 bg-red-50 dark:bg-red-950/40' 
+                  : 'border-[#e4ecf5] dark:border-slate-700 focus:ring-2 focus:ring-[#1d4ed8]'
+              } focus:outline-none transition-all`}
             />
+
+            {/* Mic Push-to-Talk Button */}
+            {speechSupported && (
+              <button
+                type="button"
+                onClick={toggleListening}
+                className={`p-2.5 rounded-full transition-all ${
+                  isListening
+                    ? 'bg-red-600 text-white animate-pulse shadow-md ring-2 ring-red-300'
+                    : 'bg-surface dark:bg-slate-800 text-ink-muted dark:text-slate-300 hover:text-ink hover:bg-slate-200 dark:hover:bg-slate-700 border border-line dark:border-slate-700'
+                }`}
+                title={isListening ? 'Stop Listening' : `Push-to-Talk (${lang.toUpperCase()})`}
+                aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+              >
+                {isListening ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+              </button>
+            )}
+
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
