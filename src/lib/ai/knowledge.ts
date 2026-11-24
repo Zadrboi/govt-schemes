@@ -197,6 +197,12 @@ export const CURATED_ASSAM_FAQS = [
     category: 'INSPECTIONS',
   },
   {
+    question: 'What are the eligibility criteria for major Assam welfare and housing schemes?',
+    answer: 'Under Assam social welfare mandates: 1) PMAY-G provides ₹1.30 lakh financial assistance for rural pucca house construction to SECC-eligible households with mandatory geo-tagged verification; 2) Orunodoi 3.0 provides ₹1,250/month DBT to female heads of economically vulnerable households; 3) Mukhya Mantri Nijut Moina (MMNM) grants ₹10,000–₹25,000 to female students for higher education; 4) Swanirbhar Naari procures traditional handlooms directly from registered women weavers.',
+    act: 'Assam Social Welfare & P&RD Directives 2024',
+    category: 'ELIGIBILITY',
+  },
+  {
     question: 'What are the rights of residents in Sixth Schedule Autonomous Council areas (BTC, KAAC, DHAC)?',
     answer: 'In the Bodoland Territorial Council (BTC), Karbi Anglong Autonomous Council (KAAC), and Dima Hasao Autonomous Council (DHAC), public works are funded through Special Development Packages (SDP) and SOPD-G. Village Council Development Committees (VCDC) possess the statutory authority to conduct on-site social audits and inspect materials registers.',
     act: 'Sixth Schedule to the Constitution of India • Assam Autonomous Councils Act',
@@ -475,7 +481,45 @@ export function generateDeterministicFallbackResponse(
     };
   }
 
-  // 5. Friendly conversational greeting handling
+  // 5. Housing / Welfare Eligibility (PMAY-G, Orunodoi, Nijut Moina, Swanirbhar Naari)
+  if (
+    clean.includes('eligibility') ||
+    clean.includes('housing') ||
+    clean.includes('pmay') ||
+    clean.includes('orunodoi') ||
+    clean.includes('nijut') ||
+    clean.includes('swanirbhar') ||
+    clean.includes('welfare') ||
+    clean.includes('যোগ্যতা') ||
+    clean.includes('আবেদন') ||
+    clean.includes('पात्रता')
+  ) {
+    const answers = {
+      en: 'Under Assam Government welfare guidelines: 1) PMAY-G provides ₹1.30 lakh assistance for pucca housing with geo-tagged verification; 2) Orunodoi 3.0 provides ₹1,250/month DBT to female family heads; 3) Mukhya Mantri Nijut Moina (MMNM) grants ₹10,000–₹25,000 for female higher education; 4) Swanirbhar Naari enables direct government procurement of handloom weaves. Use our Eligibility Checker to calculate your personalized eligibility.',
+      as: 'অসম চৰকাৰৰ আঁচনিৰ যোগ্যতা নিৰ্দেশনা অনুসৰি: ১) পিএমএৱাই-জি (PMAY-G) ৰ অধীনত পকী ঘৰ নিৰ্মাণৰ বাবে ১.৩০ লাখ টকা সাহায্য; ২) অৰুণোদয় ৩.০ যোগেদি পৰিয়ালৰ মহিলা মুৰব্বীলৈ মাহে ১,২৫০ টকা ডিবিটি; ৩) মুখ্যমন্ত্রী নিজুত মইনা আঁচনিৰে ছাত্ৰীসকলক ১০,০০০–২৫,০০০ টকা অনুদান; ৪) স্বনিৰ্ভৰ নাৰী আঁচনিৰে শিপিনীসকলৰ কাপোৰ পোনপটীয়াকৈ ক্ৰয়। আপোনাৰ যোগ্যতা জানিবলৈ Eligibility পৃষ্ঠালৈ যাওক।',
+      hi: 'असम सरकार की कल्याणकारी योजनाओं के अनुसार: 1) पीएमएवाई-जी (PMAY-G) के तहत पक्का मकान निर्माण हेतु ₹1.30 लाख की सहायता; 2) ओरुनोदोई 3.0 के तहत महिला मुखिया को ₹1,250/माह डीबीटी; 3) मुख्यमंत्री निजुत मोइना योजना से छात्राओं को उच्च शिक्षा हेतु ₹10,000–₹25,000 अनुदान; 4) स्वनिर्भर नारी योजना से बुनकरों से सीधा क्रय। अधिक जानकारी के लिए पात्रता परीक्षक का उपयोग करें।',
+      bn: 'আসাম সরকারের কল্যাণমূলক নির্দেশিকা অনুযায়ী: ১) পিএমএওয়াই-জি এর অধীনে পাকা বাড়ির জন্য ১.৩০ লাখ টাকা সহায়তা; ২) অরুণোদয় ৩.০ এর মাধ্যমে পরিবার প্রধান মহিলাকে মাসে ১,২৫০ টাকা ডিবিটি; ৩) মুখ্যমন্ত্রী নিজুত মইনা প্রকল্পের অধীনে ছাত্রীদের ১০,০০০–২৫,০০০ টাকা অনুদান; ৪) স্বনির্ভর নারী প্রকল্পের অধীনে তাঁতিদের কাপড় সরাসরি ক্রয়। বিস্তারিত তথ্যের জন্য যোগ্যতা যাচাই পৃষ্ঠায় দেখুন।',
+    };
+    return {
+      answer: answers[language] || answers.en,
+      citations: [
+        {
+          id: 'welfare-eligibility',
+          title: 'Assam Public Welfare & Housing Eligibility Guidelines',
+          url: '/eligibility',
+          type: 'ACT',
+        },
+      ],
+      contentType: 'guidance',
+      suggestedAction: {
+        label: 'Check My Welfare Eligibility',
+        url: '/eligibility',
+      },
+      hasSufficientEvidence: true,
+    };
+  }
+
+  // 6. Friendly conversational greeting handling
   const isGreeting = /^(hi|hello|hey|good\s*(morning|afternoon|evening)|greetings|namaste|nomoskar|নমস্কাৰ|नमस्ते|নমস্কার)(\s|[!.,?]|$)/i.test(clean.trim());
   if (isGreeting) {
     const greetingAnswers = {
