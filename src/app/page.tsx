@@ -118,17 +118,17 @@ export default function LandingPage() {
             </p>
 
             {/* CTA Group */}
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
               <Link
                 href="/dashboard"
-                className="px-6 py-3 bg-[#1d4ed8] hover:bg-blue-700 text-white text-xs sm:text-sm font-medium tracking-tight rounded-full shadow-md transition-all active:scale-95 flex items-center gap-2 group"
+                className="px-6 py-3 bg-[#1d4ed8] hover:bg-blue-700 text-white text-xs sm:text-sm font-medium tracking-tight rounded-full shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 group"
               >
                 <span>{t.heroExploreBtn || 'Explore Audit Ledger'}</span>
                 <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
               <Link
                 href="/verify"
-                className="px-6 py-3 bg-white dark:bg-slate-900 hover:bg-[#f4f7fb] dark:hover:bg-slate-800 text-[#0f172a] dark:text-white text-xs sm:text-sm font-medium tracking-tight rounded-full border border-[#e4ecf5] dark:border-slate-800 shadow-xs transition-all flex items-center gap-2"
+                className="px-6 py-3 bg-white dark:bg-slate-900 hover:bg-[#f4f7fb] dark:hover:bg-slate-800 text-[#0f172a] dark:text-white text-xs sm:text-sm font-medium tracking-tight rounded-full border border-[#e4ecf5] dark:border-slate-800 shadow-xs transition-all flex items-center justify-center gap-2"
               >
                 <ShieldCheck className="w-4 h-4 text-[#0284c7] dark:text-[#38bdf8]" />
                 <span>{t.heroVerifyBtn || 'Field Verification'}</span>
@@ -149,11 +149,11 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-white/95 dark:via-[#070c16]/20 dark:to-[#070c16]/95" />
             
             {/* Top-Right Floating Frosted Glass Card with deeper backdrop */}
-            <div className="absolute top-4 right-4 sm:right-6 max-w-xs px-4 py-3 rounded-2xl border border-white/60 dark:border-slate-700/80 shadow-lg text-left backdrop-blur-md bg-white/85 dark:bg-slate-900/85 pointer-events-none">
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-6 max-w-[200px] sm:max-w-xs px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border border-white/60 dark:border-slate-700/80 shadow-lg text-left backdrop-blur-md bg-white/85 dark:bg-slate-900/85 pointer-events-none">
               <div className="text-[10px] uppercase font-semibold text-[#0284c7] dark:text-[#38bdf8] tracking-wider">
                 Brahmaputra Basin
               </div>
-              <div className="text-xs font-semibold text-[#0f172a] dark:text-white mt-0.5">
+              <div className="text-xs font-semibold text-[#0f172a] dark:text-white mt-0.5 truncate">
                 Majuli Bund Reinforcement
               </div>
               <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-1 flex items-center gap-1.5 font-mono">
@@ -164,16 +164,16 @@ export default function LandingPage() {
             </div>
 
             {/* Bottom-Left Floating Frosted Glass Card with deeper backdrop */}
-            <div className="absolute bottom-4 left-4 sm:left-6 max-w-xs px-4 py-3 rounded-2xl border border-white/60 dark:border-slate-700/80 shadow-lg text-left backdrop-blur-md bg-white/85 dark:bg-slate-900/85 pointer-events-none">
+            <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-6 max-w-[220px] sm:max-w-xs px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border border-white/60 dark:border-slate-700/80 shadow-lg text-left backdrop-blur-md bg-white/85 dark:bg-slate-900/85 pointer-events-none">
               <div className="text-[10px] uppercase font-semibold text-[#1d4ed8] dark:text-[#60a5fa] tracking-wider">
                 Latest Field Audit
               </div>
-              <div className="text-xs font-semibold text-[#0f172a] dark:text-white mt-0.5">
-                Jorhat Community Primary Health Wing
+              <div className="text-xs font-semibold text-[#0f172a] dark:text-white mt-0.5 truncate">
+                Jorhat Community Health
               </div>
               <div className="text-[11px] text-[#475569] dark:text-slate-300 mt-1 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#0284c7]"></span>
-                <span>Verified by Gram Sabha #14</span>
+                <span className="truncate">Verified by Gram Sabha #14</span>
               </div>
             </div>
           </div>

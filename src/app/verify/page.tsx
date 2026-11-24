@@ -260,7 +260,7 @@ export default function VerifyPage() {
                 setGpsLng(found.longitude);
               }
             }}
-            className="w-full text-xs px-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
+            className="w-full text-base sm:text-xs px-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -343,7 +343,7 @@ export default function VerifyPage() {
               <label
                 key={item.key}
                 onClick={() => handleToggleChecklist(item.key)}
-                className={`flex items-start gap-2.5 p-3 rounded-2xl border cursor-pointer select-none transition-colors ${
+                className={`flex items-start gap-2.5 p-3.5 sm:p-3 min-h-[48px] rounded-2xl border cursor-pointer select-none transition-colors ${
                   checklist[item.key]
                     ? 'bg-blue-50/70 dark:bg-slate-800 border-primary dark:border-sky-500 text-ink dark:text-slate-100'
                     : 'bg-surface dark:bg-slate-800/40 border-line dark:border-slate-700 text-ink-muted dark:text-slate-400'
@@ -370,7 +370,7 @@ export default function VerifyPage() {
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
             placeholder="Record specific physical milestones, intake well depth, aggregate compaction or contractor presence..."
-            className="w-full text-xs p-3.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
+            className="w-full text-base sm:text-xs p-3.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
           />
         </div>
 
@@ -384,7 +384,7 @@ export default function VerifyPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full sm:w-auto px-6 py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm transition-transform active:scale-95 flex items-center justify-center gap-2 min-h-[44px]"
           >
             {submitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
             <span>{t.verifyCommitBtn || 'Commit Inspection Record'}</span>

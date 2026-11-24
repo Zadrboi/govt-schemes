@@ -342,6 +342,43 @@ export function generateDeterministicFallbackResponse(
 } {
   const clean = query.toLowerCase();
 
+  // 0. Missing Evidence / Out-of-Scope check (e.g. fake schemes like helicopter, submarine, space travel, etc.)
+  const isOutOfScope =
+    clean.includes('helicopter') ||
+    clean.includes('submarine') ||
+    clean.includes('space travel') ||
+    clean.includes('মহাকাশ') ||
+    clean.includes('পানডুব্বী') ||
+    clean.includes('पनडुब्बी') ||
+    clean.includes('বিমান') ||
+    clean.includes('aeroplane') ||
+    clean.includes('fake') ||
+    clean.includes('subsidy fee') ||
+    (context.notices.length === 0 && context.projects.length === 0 && !clean.includes('sipajhar') && !clean.includes('water') && !clean.includes('assam') && !clean.includes('scheme') && !clean.includes('drishti'));
+
+  if (isOutOfScope) {
+    const refusalAnswers = {
+      en: 'No statutory record or government gazette notice was found regarding this request. As per official GIGW 3.0 governance rules, Drishti does not estimate or invent application fees, deadlines, or scheme rules without authoritative gazette backing. For verified inquiries, please contact the Chief Minister Helpline 1905.',
+      as: 'এই অনুসন্ধান সম্পৰ্কে কোনো চৰকাৰী জাননী বা বিধিগত তথ্য পোৱা নগ’ল। চৰকাৰী নিয়ম অনুসৰি কোনো কাল্পনিক মাচুল বা সময়সীমা দিয়া নহয়। প্ৰমাণিত তথ্যৰ বাবে মুখ্যমন্ত্ৰীৰ হেল্পলাইন ১৯০৫ নম্বৰত যোগাযোগ কৰক।',
+      hi: 'इस अनुरोध के संबंध में कोई आधिकारिक सरकारी राजपत्र या वैधानिक रिकॉर्ड नहीं मिला। सरकारी नियमों के अनुसार बिना साक्ष्य के कोई भी शुल्क या समय-सीमा का अनुमान नहीं लगाया जा सकता। सहायता के लिए सीएम हेल्पलाइन 1905 पर संपर्क करें।',
+      bn: 'এই অনুসন্ধান সম্পর্কিত কোনও সরকারি গেজেট বা বিধিবদ্ধ রেকর্ড পাওয়া যায়নি। সরকারি নির্দেশিকা অনুযায়ী প্রমাণ ছাড়া কোনও ফি বা সময়সীমা তৈরি করা হয় না। নির্ভরযোগ্য তথ্যের জন্য সিএম হেল্পলাইন ১৯০৫ নম্বরে যোগাযোগ করুন।',
+    };
+
+    return {
+      answer: refusalAnswers[language] || refusalAnswers.en,
+      citations: [
+        {
+          id: 'helpline-1905',
+          title: 'Assam Public Grievance Helpline 1905',
+          url: '/verify',
+          type: 'FAQ',
+        },
+      ],
+      contentType: 'guidance',
+      hasSufficientEvidence: false,
+    };
+  }
+
   // 1. Flagged Sipajhar project query
   if (
     clean.includes('sipajhar') ||
@@ -543,42 +580,6 @@ export function generateDeterministicFallbackResponse(
     };
   }
 
-  // 6. Missing Evidence / Out-of-Scope check (e.g. fake schemes like helicopter, submarine, etc.)
-  const isOutOfScope =
-    clean.includes('helicopter') ||
-    clean.includes('submarine') ||
-    clean.includes('space travel') ||
-    clean.includes('মহাকাশ') ||
-    clean.includes('পানডুব্বী') ||
-    clean.includes('पनडुब्बी') ||
-    clean.includes('বিমান') ||
-    clean.includes('aeroplane') ||
-    clean.includes('fake') ||
-    clean.includes('subsidy fee') ||
-    (context.notices.length === 0 && context.projects.length === 0 && !clean.includes('sipajhar') && !clean.includes('water') && !clean.includes('assam') && !clean.includes('scheme') && !clean.includes('drishti'));
-
-  if (isOutOfScope) {
-    const refusalAnswers = {
-      en: 'No statutory record or government gazette notice was found regarding this request. As per official GIGW 3.0 governance rules, Drishti does not estimate or invent application fees, deadlines, or scheme rules without authoritative gazette backing. For verified inquiries, please contact the Chief Minister Helpline 1905.',
-      as: 'এই অনুসন্ধান সম্পৰ্কে কোনো চৰকাৰী জাননী বা বিধিগত তথ্য পোৱা নগ’ল। চৰকাৰী নিয়ম অনুসৰি কোনো কাল্পনিক মাচুল বা সময়সীমা দিয়া নহয়। প্ৰমাণিত তথ্যৰ বাবে মুখ্যমন্ত্ৰীৰ হেল্পলাইন ১৯০৫ নম্বৰত যোগাযোগ কৰক।',
-      hi: 'इस अनुरोध के संबंध में कोई आधिकारिक सरकारी राजपत्र या वैधानिक रिकॉर्ड नहीं मिला। सरकारी नियमों के अनुसार बिना साक्ष्य के कोई भी शुल्क या समय-सीमा का अनुमान नहीं लगाया जा सकता। सहायता के लिए सीएम हेल्पलाइन 1905 पर संपर्क करें।',
-      bn: 'এই অনুসন্ধান সম্পর্কিত কোনও সরকারি গেজেট বা বিধিবদ্ধ রেকর্ড পাওয়া যায়নি। সরকারি নির্দেশিকা অনুযায়ী প্রমাণ ছাড়া কোনও ফি বা সময়সীমা তৈরি করা হয় না। নির্ভরযোগ্য তথ্যের জন্য সিএম হেল্পলাইন ১৯০৫ নম্বরে যোগাযোগ করুন।',
-    };
-
-    return {
-      answer: refusalAnswers[language] || refusalAnswers.en,
-      citations: [
-        {
-          id: 'helpline-1905',
-          title: 'Assam Public Grievance Helpline 1905',
-          url: '/verify',
-          type: 'FAQ',
-        },
-      ],
-      contentType: 'guidance',
-      hasSufficientEvidence: false,
-    };
-  }
 
   // 7. General grounded response covering Drishti monitoring
   const firstNotice = context.notices[0] || CURATED_ASSAM_NOTICES[0];

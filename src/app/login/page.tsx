@@ -108,21 +108,21 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => loginAsDemo('citizen@demo.yojna')}
-                className="py-2 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors"
+                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
               >
                 {t.loginRoleCitizen || 'Citizen'}
               </button>
               <button
                 type="button"
                 onClick={() => loginAsDemo('officer@demo.yojna')}
-                className="py-2 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors"
+                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
               >
                 {t.loginRoleOfficer || 'Field Officer'}
               </button>
               <button
                 type="button"
                 onClick={() => loginAsDemo('dc@demo.yojna')}
-                className="py-2 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors"
+                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
               >
                 {t.loginRoleAuditor || 'Auditor / DC'}
               </button>
@@ -147,7 +147,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@demo.yojna"
                   required
-                  className="w-full text-xs pl-10 pr-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
+                  className="w-full text-base sm:text-xs pl-10 pr-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
                 />
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full text-xs pl-10 pr-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
+                  className="w-full text-base sm:text-xs pl-10 pr-4 py-2.5 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
                 />
               </div>
             </div>

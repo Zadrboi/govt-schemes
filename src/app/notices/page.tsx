@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { 
   FileText, Search, Calendar, Building2, 
   ChevronRight, CheckCircle2, ArrowUpRight, 
-  Download, RefreshCw 
+  Download, RefreshCw, X 
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 
@@ -32,6 +32,7 @@ export default function NoticesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedNotice, setSelectedNotice] = useState<NoticeItem | null>(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
   useEffect(() => {
     const loadNotices = async () => {
@@ -98,7 +99,7 @@ export default function NoticesPage() {
             />
           </div>
 
-          <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-full border border-line dark:border-slate-700 shadow-xs">
+          <div className="flex items-center gap-1 p-1 bg-white dark:bg-slate-900 rounded-full border border-line dark:border-slate-700 shadow-xs overflow-x-auto no-scrollbar max-w-full">
             {['ALL', 'ACTIVE', 'AMENDED', 'SUPERSEDED'].map((st) => (
               <button
                 key={st}
@@ -138,7 +139,10 @@ export default function NoticesPage() {
               return (
                 <article
                   key={notice.id}
-                  onClick={() => setSelectedNotice(notice)}
+                  onClick={() => {
+                    setSelectedNotice(notice);
+                    setIsMobileDetailOpen(true);
+                  }}
                   className={`p-6 rounded-[24px] border transition-all duration-200 cursor-pointer ${
                     isSelected
                       ? 'bg-white dark:bg-slate-900 border-primary shadow-md ring-1 ring-primary/20'
@@ -193,8 +197,8 @@ export default function NoticesPage() {
           )}
         </div>
 
-        {/* Right Column: Sticky Slide-over Document Reader: 5 cols */}
-        <div className="lg:col-span-5 sticky top-28">
+        {/* Right Column: Sticky Slide-over Document Reader (Desktop: hidden below lg) */}
+        <div className="hidden lg:block lg:col-span-5 sticky top-28">
           {selectedNotice ? (
             <div className="p-6 sm:p-7 rounded-[28px] bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-sm space-y-5">
               {/* Document Header Image Banner */}
@@ -300,6 +304,88 @@ export default function NoticesPage() {
           )}
         </div>
       </div>
+
+      {/* Mobile Gazette Reader Modal (lg:hidden) */}
+      {selectedNotice && isMobileDetailOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end p-2 sm:p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[28px] max-h-[85dvh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-line dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-line dark:border-slate-800 pb-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary dark:text-sky-400 bg-blue-50 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                Gazette Order Reader
+              </span>
+              <button
+                onClick={() => setIsMobileDetailOpen(false)}
+                className="p-1 rounded-full text-ink-muted hover:text-ink dark:hover:text-white"
+                aria-label="Close document reader"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Document Header Image Banner */}
+            <div className="relative w-full h-28 rounded-2xl overflow-hidden border border-line dark:border-slate-800">
+              <Image
+                src="/images/plaque-unveiling.jpg"
+                alt="Gazette statutory order announcement"
+                fill
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+              <div className="absolute bottom-2 left-3 text-[10px] font-medium text-white">
+                Official Gazette Authority Stamp
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[10px] font-mono text-ink-muted dark:text-slate-400 block mb-1">
+                Ref #{selectedNotice.id.slice(-8)}
+              </span>
+              <h2 className="text-base font-semibold text-ink dark:text-slate-100 leading-snug">
+                {selectedNotice.title}
+              </h2>
+              <div className="text-xs text-ink-muted dark:text-slate-300 flex items-center gap-1.5 mt-1">
+                <Building2 className="w-3.5 h-3.5 text-primary dark:text-sky-400" />
+                <span>{selectedNotice.issuingAuthority}</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-surface dark:bg-slate-800 border border-line dark:border-slate-700 space-y-1">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted dark:text-slate-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-secondary dark:text-sky-400" />
+                <span>Citizen Summary</span>
+              </div>
+              <p className="text-xs text-ink dark:text-slate-200 leading-relaxed">
+                {selectedNotice.plainSummary}
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-xs font-semibold text-ink dark:text-slate-100">Original Gazette Text:</div>
+              <div className="p-3 rounded-2xl bg-surface dark:bg-slate-800 font-serif text-xs text-ink/80 dark:text-slate-200 leading-relaxed max-h-36 overflow-y-auto whitespace-pre-wrap border border-line dark:border-slate-700">
+                {selectedNotice.originalText}
+              </div>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                onClick={() => window.print()}
+                className="w-full py-2.5 bg-surface dark:bg-slate-800 text-ink dark:text-slate-200 text-xs font-medium rounded-full border border-line dark:border-slate-700 flex items-center justify-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Circular PDF</span>
+              </button>
+              <Link
+                href="/dashboard"
+                onClick={() => setIsMobileDetailOpen(false)}
+                className="w-full py-2.5 bg-primary text-white text-xs font-medium rounded-full shadow-xs flex items-center justify-center gap-1"
+              >
+                <span>View Affected Schemes</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

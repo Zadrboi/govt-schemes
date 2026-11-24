@@ -216,7 +216,7 @@ export default function DirectoryPage() {
       </div>
 
       {/* Filter Category Pills */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 max-w-full">
         {[
           { id: 'ALL', label: t.dirAllHubs || 'All Civic Points', count: DIRECTORY_DATA.length },
           { id: 'TRANSPORT', label: t.dirRiverineFerries || '🚌 ASTC Buses & Ferries', count: DIRECTORY_DATA.filter((d) => d.type === 'TRANSPORT').length },
@@ -226,7 +226,7 @@ export default function DirectoryPage() {
           <button
             key={btn.id}
             onClick={() => setFilterType(btn.id)}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 whitespace-nowrap ${
               filterType === btn.id
                 ? 'bg-primary text-white shadow-xs'
                 : 'bg-white dark:bg-slate-900 hover:bg-surface dark:hover:bg-slate-800 text-ink-muted dark:text-slate-300 border border-line dark:border-slate-800'
@@ -298,8 +298,8 @@ export default function DirectoryPage() {
 
       {/* Slide-over Frosted Detail Drawer */}
       {drawerEntity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-xs p-4 sm:p-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[28px] max-w-lg w-full h-[90vh] max-h-[720px] p-6 sm:p-8 flex flex-col justify-between shadow-2xl border border-line dark:border-slate-800 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 backdrop-blur-xs p-2 sm:p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-[28px] max-w-lg w-full h-[92dvh] sm:h-[90vh] max-h-[720px] p-5 sm:p-8 flex flex-col justify-between shadow-2xl border border-line dark:border-slate-800 overflow-y-auto">
             <div className="space-y-6">
               {/* Drawer Top */}
               <div className="flex items-center justify-between border-b border-line dark:border-slate-800 pb-4">

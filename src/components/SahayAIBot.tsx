@@ -149,7 +149,7 @@ export default function SahayAIBot() {
   };
 
   return (
-    <aside aria-label="Sahay AI Assistant" className="fixed bottom-6 right-6 z-[9999]">
+    <aside aria-label="Sahay AI Assistant" className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[9999]">
       {/* Pure Circular Launcher Orb */}
       {!isOpen && (
         <button
@@ -157,12 +157,12 @@ export default function SahayAIBot() {
           onClick={() => setIsOpen(true)}
           aria-label="Open Sahay AI Assistant"
           aria-expanded={isOpen}
-          className="group relative flex items-center justify-center w-[60px] h-[60px] rounded-full aspect-square bg-[#1d4ed8] dark:bg-[#60a5fa] text-white dark:text-slate-950 shadow-[0_10px_35px_rgba(29,78,216,0.38)] hover:shadow-[0_14px_45px_rgba(29,78,216,0.48)] transition-all duration-300 hover:scale-105 active:scale-95 ring-4 ring-white/30 dark:ring-slate-900/40"
+          className="group relative flex items-center justify-center w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] rounded-full aspect-square bg-[#1d4ed8] dark:bg-[#60a5fa] text-white dark:text-slate-950 shadow-[0_10px_35px_rgba(29,78,216,0.38)] hover:shadow-[0_14px_45px_rgba(29,78,216,0.48)] transition-all duration-300 hover:scale-105 active:scale-95 ring-4 ring-white/30 dark:ring-slate-900/40"
         >
-          <Sparkles className="w-6 h-6 animate-pulse" />
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
           <span className="sr-only">Open Sahay AI Assistant</span>
           {/* Subtle status dot */}
-          <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full" />
+          <span className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-400 border-2 border-white dark:border-slate-900 rounded-full" />
         </button>
       )}
 
@@ -172,7 +172,7 @@ export default function SahayAIBot() {
           role="dialog"
           aria-label="Sahay AI Assistant Window"
           aria-modal="true"
-          className="w-[92vw] sm:w-[420px] h-[580px] max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-[#e4ecf5] dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-300"
+          className="fixed inset-x-3 bottom-16 sm:bottom-auto sm:right-auto sm:inset-auto sm:static w-auto sm:w-[420px] h-[72dvh] sm:h-[580px] max-h-[560px] sm:max-h-[85vh] bg-white dark:bg-slate-900 rounded-[22px] sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-[#e4ecf5] dark:border-slate-800 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-300"
         >
           {/* Header */}
           <div className="px-5 py-4 bg-gradient-to-r from-[#1d4ed8] to-[#0284c7] text-white flex items-center justify-between shadow-xs">
@@ -340,7 +340,7 @@ export default function SahayAIBot() {
               onChange={(e) => setInput(e.target.value)}
               placeholder={t.sahayInputPlaceholder || 'Ask in English, অসমীয়া, हिन्दी, or বাংলা...'}
               disabled={isLoading}
-              className="flex-1 px-4 py-2 text-xs rounded-full bg-[#f4f7fb] dark:bg-slate-800 text-[#0f172a] dark:text-white border border-[#e4ecf5] dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1d4ed8] transition-all"
+              className="flex-1 px-4 py-2 text-base sm:text-xs rounded-full bg-[#f4f7fb] dark:bg-slate-800 text-[#0f172a] dark:text-white border border-[#e4ecf5] dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#1d4ed8] transition-all"
             />
             <button
               type="submit"

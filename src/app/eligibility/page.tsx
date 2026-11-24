@@ -180,7 +180,7 @@ export default function EligibilityPage() {
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full text-xs px-4 py-3 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
+                  className="w-full text-base sm:text-xs px-4 py-3 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
                 >
                   <option value="Darrang">Darrang</option>
                   <option value="Kamrup">Kamrup Metro</option>
@@ -221,7 +221,7 @@ export default function EligibilityPage() {
             <div className="flex justify-end pt-4 border-t border-line dark:border-slate-800">
               <button
                 onClick={() => setStep(2)}
-                className="px-6 py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 <span>Continue to Need &amp; Sector</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -262,17 +262,17 @@ export default function EligibilityPage() {
               ))}
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-line dark:border-slate-800">
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t border-line dark:border-slate-800">
               <button
                 onClick={() => setStep(1)}
-                className="px-5 py-2 bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-ink dark:text-slate-200 text-xs font-medium rounded-full flex items-center gap-1.5"
+                className="w-full sm:w-auto px-5 py-3 sm:py-2 bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-ink dark:text-slate-200 text-xs font-medium rounded-full flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back</span>
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="px-6 py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm flex items-center gap-1.5"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-primary hover:bg-blue-700 text-white text-xs font-medium rounded-full shadow-sm flex items-center justify-center gap-1.5 min-h-[44px]"
               >
                 <span>Calculate Eligible Schemes</span>
                 <ArrowRight className="w-3.5 h-3.5" />

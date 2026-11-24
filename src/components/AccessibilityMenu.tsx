@@ -75,7 +75,7 @@ export default function AccessibilityMenu() {
           role="dialog"
           aria-modal="true"
           aria-label={t.a11yTitle || 'Accessibility preferences'}
-          className="absolute right-0 mt-3 w-80 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-2xl z-[9999] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+          className="fixed inset-x-3 top-20 max-h-[75dvh] overflow-y-auto sm:absolute sm:inset-auto sm:right-0 sm:mt-3 sm:w-80 sm:max-h-[85vh] p-5 rounded-2xl bg-white dark:bg-slate-900 border border-line dark:border-slate-800 shadow-2xl z-[9999] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
         >
           <div className="flex items-center justify-between pb-3 border-b border-line dark:border-slate-800">
             <div className="flex items-center gap-2">
