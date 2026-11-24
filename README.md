@@ -106,6 +106,15 @@ npm run build
 
 ---
 
+## Automated Code Review
+
+Pull requests to this repository can be reviewed by CodeRabbit. Install the
+[CodeRabbit GitHub App](https://github.com/apps/coderabbitai) for the
+`Zadrboi/govt-schemes` repository, then open or update a pull request to receive
+automated feedback.
+
+---
+
 ## License
 
 This project is licensed under the MIT License.
