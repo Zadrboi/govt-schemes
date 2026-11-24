@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { clearSessionCookie, getCurrentUser, writeAuditLog } from '@/lib/security/auth';
 import { getClientIp, hashIp } from '@/lib/security/auth';

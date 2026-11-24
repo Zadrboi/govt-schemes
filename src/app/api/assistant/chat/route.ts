@@ -4,4 +4,6 @@
  * to guarantee unified rate limiting, OWASP LLMSVS defenses, and grounding.
  */
 
+export const dynamic = 'force-dynamic';
+
 export { POST } from '../route';

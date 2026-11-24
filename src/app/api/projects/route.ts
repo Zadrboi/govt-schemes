@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { projectQuerySchema, projectCreateSchema } from '@/lib/validation';
 import { getCurrentUser, requireRole, canCreateProjects, writeAuditLog, getClientIp, hashIp, applyRateLimit } from '@/lib/security/auth';

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { grievanceUpdateSchema } from '@/lib/validation';
 import { getCurrentUser, canAccessGrievance, writeAuditLog, getClientIp, hashIp } from '@/lib/security/auth';

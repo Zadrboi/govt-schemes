@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { loginSchema } from '@/lib/validation';
 import { authenticateUser, createSessionToken, setSessionCookie, setMfaVerifiedCookie, writeAuditLog, getClientIp, hashIp } from '@/lib/security/auth';
