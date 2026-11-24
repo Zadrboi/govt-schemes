@@ -1,0 +1,265 @@
+// Prisma Schema for Poorvottar Drishti (দৃষ্টি)
+// District Development Ledger & Statutory Audit
+// Works with SQLite (local dev) and PostgreSQL (production via DATABASE_URL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS (stored as String for SQLite compatibility; PostgreSQL uses native enums)
+// ============================================
+
+// UserRole: CITIZEN | FIELD_OFFICER | CODISTRICT_OFFICER | DC_COMMISSIONER | ADMIN
+// PreferredLang: en | as | hi | bn
+// SchemeCode: NESIDS_ROADS | NESIDS_OTRI | NEC | PM_DEVINE | SDP | MLAADS | SUHRID | UNTIED_FUNDS | ASSAM_DARSHAN | AAGY | NATIONAL_JJM_PMGSY_CUSTOM
+// ProjectStatus: PLANNED | ONGOING | STALLED | COMPLETED | CLOSED
+// UCStatus: PENDING | SUBMITTED | VERIFIED | REJECTED | NOT_APPLICABLE
+// NoticeStatus: ACTIVE | AMENDED | SUPERSEDED | EXPIRED
+// GrievanceStatus: SUBMITTED | UNDER_REVIEW | ACTION_REQUIRED | RESOLVED | REJECTED
+// GrievanceCategory: STALLED_WORK | QUALITY_DEFECT | FUND_MISUSE | WATER_SUPPLY_HALT | CORRUPTION_ALLEGATION | DOCUMENT_REQUEST | OFFICER_CONDUCT | OTHER
+// AiFeedbackRating: HELPFUL | INCORRECT | OUTDATED
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  phone          String   @unique
+  name           String
+  passwordHash   String
+  role           String   @default("CITIZEN")
+  preferredLang  String   @default("en")
+  district       String?
+  mfaEnabled     Boolean  @default(false)
+  mfaSecret      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  inspections    FieldInspection[]
+  grievances     Grievance[]
+  formDrafts     FormDraft[]
+  auditLogs      AuditLog[]
+  aiFeedbacks    AiFeedback[]
+
+  @@index([role])
+  @@index([district])
+  @@map("users")
+}
+
+model ProjectWork {
+  id                    String   @id @default(cuid())
+  workCode              String   @unique
+  title                 String
+  scheme                String
+  fundingAgency         String
+  sanctionDate          DateTime
+  sanctionedCost        Float
+  revisedCost           Float?
+  state                 String   @default("Assam")
+  district              String
+  coDistrict            String
+  block                 String
+  adcArea               String?
+  villageWard           String
+  latitude              Float
+  longitude             Float
+  implementingAgency    String
+  contractor            String?
+  executingOfficer      String
+  technicalSanctionRef  String?
+  plannedStartDate      DateTime
+  plannedEndDate        DateTime
+  actualStartDate       DateTime?
+  actualEndDate         DateTime?
+  physicalCompletionPct Float    @default(0)
+  financialSanction     Float
+  fundReleased          Float    @default(0)
+  expenditure           Float    @default(0)
+  ucStatus              String   @default("PENDING")
+  pendingAmount         Float    @default(0)
+  lastInspectionDate    DateTime?
+  outcomeIndicators     String?
+  imagePath             String?
+  status                String   @default("PLANNED")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  milestones        PhysicalMilestone[]
+  inspections       FieldInspection[]
+  grievances        Grievance[]
+  varianceFlags     AuditVarianceFlag[]
+
+  @@index([workCode])
+  @@index([scheme])
+  @@index([district])
+  @@index([coDistrict])
+  @@index([adcArea])
+  @@index([status])
+  @@index([sanctionDate])
+  @@map("project_works")
+}
+
+model PhysicalMilestone {
+  id            String   @id @default(cuid())
+  projectWorkId String
+  projectWork   ProjectWork @relation(fields: [projectWorkId], references: [id], onDelete: Cascade)
+  name          String
+  plannedDate   DateTime
+  actualDate    DateTime?
+  completionPct Float    @default(0)
+  verified      Boolean  @default(false)
+  verifiedBy    String?
+  verifiedAt    DateTime?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectWorkId])
+  @@map("physical_milestones")
+}
+
+model FieldInspection {
+  id                String   @id @default(cuid())
+  projectWorkId     String
+  projectWork       ProjectWork @relation(fields: [projectWorkId], references: [id], onDelete: Cascade)
+  officerId         String
+  officer           User     @relation(fields: [officerId], references: [id])
+  gpsLat            Float
+  gpsLng            Float
+  photoPath         String?
+  exifTimestamp     DateTime?
+  qualityFlagsJson  String?
+  notes             String?
+  offlineClientId   String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([projectWorkId])
+  @@index([officerId])
+  @@index([createdAt])
+  @@map("field_inspections")
+}
+
+model GovernmentNotice {
+  id                String   @id @default(cuid())
+  title             String   @unique
+  issuingAuthority  String
+  publishedAt       DateTime
+  effectiveAt       DateTime?
+  status            String   @default("ACTIVE")
+  originalText      String
+  plainSummary      String
+  actionChecklistJson String?
+  sourceUrl         String?
+  lastReviewedAt    DateTime?
+  translationsJson  String
+  imagePath         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([issuingAuthority])
+  @@map("government_notices")
+}
+
+model Grievance {
+  id               String   @id @default(cuid())
+  ticketCode       String   @unique
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  projectWorkId    String?
+  projectWork      ProjectWork? @relation(fields: [projectWorkId], references: [id])
+  category         String
+  department       String
+  district         String
+  description      String
+  attachmentPath   String?
+  status           String   @default("SUBMITTED")
+  escalationLevel  Int      @default(1)
+  timelineJson     String?
+  feedbackRating   Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
+  @@index([projectWorkId])
+  @@index([status])
+  @@index([district])
+  @@index([category])
+  @@map("grievances")
+}
+
+model FormDraft {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  formType    String
+  step        Int      @default(1)
+  payloadJson String
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, formType])
+  @@index([userId])
+  @@map("form_drafts")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorId      String
+  actor        User     @relation(fields: [actorId], references: [id])
+  action       String
+  entityType   String
+  entityId     String
+  metadataJson String?
+  ipHash       String?
+  createdAt    DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AiFeedback {
+  id                 String   @id @default(cuid())
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id])
+  queryLang          String
+  userPrompt         String
+  assistantResponse  String
+  citedSourcesJson   String?
+  rating             String
+  createdAt          DateTime @default(now())
+
+  @@index([userId])
+  @@index([queryLang])
+  @@index([rating])
+  @@index([createdAt])
+  @@map("ai_feedback")
+}
+
+model AuditVarianceFlag {
+  id                String   @id @default(cuid())
+  projectWorkId     String
+  projectWork       ProjectWork @relation(fields: [projectWorkId], references: [id], onDelete: Cascade)
+  financialPct      Float
+  physicalPct       Float
+  varianceGapPct    Float
+  flagReason        String
+  inquiryStatus     String   @default("NOTICE_SERVED")
+  triggeredDate     DateTime @default(now())
+  resolvedDate      DateTime?
+
+  @@index([projectWorkId])
+  @@index([inquiryStatus])
+  @@map("audit_variance_flags")
+}

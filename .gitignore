@@ -1,0 +1,40 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js, TypeScript & Prisma build outputs
+/.next/
+/out/
+/build/
+/coverage/
+/prisma/generated
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment files (ignore all secrets, allow only .env.example)
+.env*
+!.env.example
+
+# Local SQLite database & journal files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Secret, key and API files
+*API*.txt
+*api*.txt
+*.pem
+*.key
+*.cert
+
+# Logs, caches, OS & platform
+*.log
+.DS_Store
+Thumbs.db
+.cache
+.eslintcache
+.turbo
+.swc
+.vercel
