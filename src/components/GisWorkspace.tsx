@@ -33,6 +33,7 @@ export default function GisWorkspace({
 
   // View state
   const [viewMode, setViewMode] = useState<'map' | 'table'>('map');
+  const [baseLayer, setBaseLayer] = useState<'map' | 'satellite'>('map');
   const [showRiskHeatmap, setShowRiskHeatmap] = useState<boolean>(true);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
@@ -128,10 +129,14 @@ export default function GisWorkspace({
 
       const map = mapInstanceRef.current;
 
-      // Update Tile Layer based on Dark Mode
-      const tileUrl = isDarkMode
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+      // Update Tile Layer: Keyless OpenStreetMap (default) vs Keyless Esri World Imagery (satellite)
+      const tileUrl = baseLayer === 'satellite'
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+      const tileAttribution = baseLayer === 'satellite'
+        ? '&copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics'
+        : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
       // Remove existing tile layers
       map.eachLayer((layer: any) => {
@@ -141,9 +146,8 @@ export default function GisWorkspace({
       });
 
       L.tileLayer(tileUrl, {
-        subdomains: 'abcd',
         maxZoom: 19,
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution: tileAttribution,
       }).addTo(map);
 
       // Manage Risk Heatmap Overlay
@@ -369,7 +373,7 @@ export default function GisWorkspace({
     return () => {
       isSubscribed = false;
     };
-  }, [mounted, viewMode, isDarkMode, showRiskHeatmap, filteredProjects, activeProject, onSelectProject]);
+  }, [mounted, viewMode, baseLayer, isDarkMode, showRiskHeatmap, filteredProjects, activeProject, onSelectProject]);
 
   // Clean reset to Assam center
   const handleResetView = () => {
@@ -402,7 +406,7 @@ export default function GisWorkspace({
             </span>
           </div>
           <p className="text-xs text-ink-muted dark:text-slate-400 mt-0.5">
-            Carto Positron/Dark telemetry layer with 5-level administrative drilldown & Sixth Schedule ADC boundaries
+            Keyless OpenStreetMap telemetry layer with optional Esri World Imagery satellite view, 5-level administrative drilldown &amp; Sixth Schedule ADC boundaries
           </p>
         </div>
 
@@ -523,7 +527,7 @@ export default function GisWorkspace({
             onChange={(e) => setSelectedGovernance(e.target.value)}
             className="text-xs px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-primary"
           >
-            <option value="ALL">All Governance Types</option>
+            <option value="ALL">All Governance</option>
             <option value="SIXTH_SCHEDULE_ADC">Sixth Schedule (BTC / KAAC / NCHAC)</option>
             <option value="PANCHAYAT_GRAM_SABHA">Panchayat / Gram Sabha</option>
           </select>
@@ -572,8 +576,38 @@ export default function GisWorkspace({
       {/* Main View Area: Leaflet Map or Accessible Table */}
       {viewMode === 'map' ? (
         <div className="relative w-full h-[360px] lg:h-[500px] rounded-2xl overflow-hidden border border-line dark:border-slate-800 bg-[#eef4fc] dark:bg-slate-950">
-          {/* Leaflet DOM container */}
-          <div ref={mapContainerRef} className="w-full h-full z-0" style={{ minHeight: '360px' }} />
+          {/* Leaflet DOM container - only drishti-osm-map in Map mode so dark mode filter does not invert satellite */}
+          <div
+            ref={mapContainerRef}
+            className={`w-full h-full z-0 ${baseLayer === 'map' ? 'drishti-osm-map' : ''}`}
+            style={{ minHeight: '360px' }}
+          />
+
+          {/* Compact Map | Satellite Layer Toggle Overlay (Top Left inside map) */}
+          <div className="absolute top-3 left-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-line dark:border-slate-800 shadow-md flex items-center gap-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setBaseLayer('map')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                baseLayer === 'map'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-ink-muted dark:text-slate-300 hover:text-ink'
+              }`}
+            >
+              Map
+            </button>
+            <button
+              type="button"
+              onClick={() => setBaseLayer('satellite')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                baseLayer === 'satellite'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-ink-muted dark:text-slate-300 hover:text-ink'
+              }`}
+            >
+              Satellite
+            </button>
+          </div>
 
           {/* Map Legend Overlay (Bottom Left) */}
           <div className="absolute bottom-3 left-3 z-10 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-xl border border-line dark:border-slate-800 shadow-md flex flex-wrap items-center gap-3 text-[11px]">

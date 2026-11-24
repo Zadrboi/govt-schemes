@@ -12,7 +12,7 @@
 | Category | Specification | Implementation Files | Status |
 | :--- | :--- | :--- | :--- |
 | **All 11 Decentralised Schemes** | NESIDS-Roads, NESIDS-OTRI, NEC, PM-DevINE, SDP, MLAADS, Suhrid, Untied Funds, Assam Darshan, AAGY, National JJM/PMGSY | `src/lib/data/canonical.ts`, `src/app/api/schemes/route.ts` | **PASS** |
-| **Interactive GIS Workspace** | Client-only Leaflet with Carto Positron/Dark Matter tiles, 5-level admin drilldown, Sixth Schedule ADC boundaries, risk heatmap halos, status shape markers | `src/components/GisWorkspace.tsx`, `src/app/dashboard/page.tsx` | **PASS** |
+| **Interactive GIS Workspace** | Client-only Leaflet with keyless OpenStreetMap tiles, editorial dark mode, Esri World Imagery satellite layer, 5-level admin drilldown, Sixth Schedule ADC boundaries, risk heatmap halos, status shape markers | `src/components/GisWorkspace.tsx`, `src/app/dashboard/page.tsx` | **PASS** |
 | **Signature Demo Scenario** | `AS-DAR-0821` Sipajhar WSS (80% disbursed vs 35% physical, 74-day stall alert, top of DC weekly queue, live QR plaque) | `src/lib/data/canonical.ts`, `src/app/asset/[id]/page.tsx`, `src/app/dashboard/page.tsx` | **PASS** |
 | **6 Role-Based Views** | DC Weekly Queue, Co-District Bottlenecks, Block/ADC Field Ops, State Planning Reconciliation, MDoNER/NEC Strategic Watch, Citizen/Gram Sabha Audit | `src/app/dashboard/page.tsx`, `src/lib/security/auth.ts` | **PASS** |
 | **Real-Time Event Feed** | Activity ledger with Field, Financial, Administrative, Citizen, and System event streams | `src/lib/data/canonical.ts`, `src/app/dashboard/page.tsx` | **PASS** |
@@ -53,7 +53,7 @@
 - **Implementation:** `src/components/GisWorkspace.tsx`, `src/components/RegisterSchemeModal.tsx`
 
 ### 2.3 Interactive Leaflet GIS Workspace
-- **Tile Architecture:** Carto Positron for light mode, Carto Dark Matter for dark mode.
+- **Tile Architecture:** Keyless OpenStreetMap with CSS-based editorial dark mode and optional Esri World Imagery satellite view.
 - **Status Markers with Distinct Shapes & Colors (Accessibility):**
   - `STALLED`: Red Octagon with pulsating warning ring.
   - `MISMATCH`: Purple Diamond with variance split indicator.

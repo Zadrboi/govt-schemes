@@ -256,3 +256,9 @@ html.reduce-motion ::after {
     scroll-behavior: auto !important;
   }
 }
+
+/* Editorial Dark Mode for OpenStreetMap Tiles (leaves markers, popups, and legends intact) */
+.dark .drishti-osm-map .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(92%) saturate(85%);
+}
+
