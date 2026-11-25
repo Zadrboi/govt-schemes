@@ -184,7 +184,7 @@ describe('Sahay AI Chat Route - Turn Sanitization & Model Fallback', () => {
       const data = await res.json();
       expect(data.fallback).toBe(false);
       expect(data.reply).toContain('Lachit Borphukan');
-      expect(data.model).toBe('gemini-flash-lite-latest');
+      expect(data.model).toBe('gemini-3.5-flash-lite');
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });

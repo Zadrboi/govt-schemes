@@ -100,7 +100,15 @@ async function callGeminiWithFallback(
     return turn;
   });
 
-  for (const model of GEMINI_MODELS) {
+  const modelsToTry = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash-lite", // immediate retry absorbs transient timeout/503 spikes
+    "gemini-flash-lite-latest",
+    "gemma-4-26b-a4b-it",
+    "gemini-3.6-flash",
+  ] as const;
+
+  for (const model of modelsToTry) {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const payload: any = {
@@ -118,7 +126,7 @@ async function callGeminiWithFallback(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(6500), // 6.5s per model to comfortably fit within Vercel execution window
+        signal: AbortSignal.timeout(5500), // 5.5s per attempt to comfortably fit multiple tries within Vercel execution window
       });
 
       if (!response.ok) {
@@ -126,6 +134,10 @@ async function callGeminiWithFallback(
         lastError = `${model} HTTP ${response.status}: ${errBody.slice(0, 200)}`;
         lastErrorCode = `GEMINI_${response.status}`;
         console.warn(`[Sahay AI] ${model} failed with HTTP ${response.status}`);
+        // If 503, brief pause before next attempt/model
+        if (response.status === 503) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
         // Fall back on high demand, unavailable, timeouts or missing models
         if ([400, 402, 403, 404, 429, 500, 502, 503, 504].includes(response.status)) {
           continue;
