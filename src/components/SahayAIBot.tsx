@@ -173,10 +173,14 @@ export default function SahayAIBot() {
     setIsLoading(true);
 
     try {
-      const historyPayload = messages.concat(userMsg).map((m) => ({
-        role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
-        content: m.text,
-      }));
+      // Filter out welcome message and any connection error messages from history payload
+      const historyPayload = messages
+        .filter((m) => m.id !== 'welcome' && !m.text.includes('temporary connection issue'))
+        .concat(userMsg)
+        .map((m) => ({
+          role: m.sender === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.text,
+        }));
 
       const res = await fetch('/api/assistant/chat', {
         method: 'POST',

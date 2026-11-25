@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { sanitizeGeminiContents } from "@/lib/ai/sanitize-contents";
 
+export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
+// Ordered by reliability and response time confirmed via live API diagnostics
 const GEMINI_MODELS = [
   "gemini-3.5-flash-lite",
   "gemini-3.8-flash",
-  "gemini-3.6-flash",
-  "gemini-4-hydrogen",
   "gemini-3.5-flash",
+  "gemini-3.6-flash",
+  "gemini-3.1-flash-lite",
   "gemini-flash-latest",
+  "gemma-4-31b-it",
 ] as const;
 
 const HistoryItemSchema = z
@@ -86,10 +90,12 @@ async function loadSafeProjectContext(): Promise<string> {
         .join("\n");
     }
   } catch {
-    // Silent fallback so general AI chat always works
+    // Silent fallback
   }
   return "Flagship demo record: Sipajhar Co-District Rural Piped Water Supply (NESIDS-OTRI) (Work Code: AS-DAR-0821) — 80% financially complete (₹8.80 Cr disbursed), 35% physically verified, last geo-tagged inspection 74 days ago (stalled-work alert).";
 }
+
+
 
 async function callGeminiWithFallback(
   apiKey: string,
@@ -97,34 +103,65 @@ async function callGeminiWithFallback(
   contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>
 ): Promise<{ text: string; model: string }> {
   let lastError = "Unknown Gemini API error";
+  let lastErrorCode = "GEMINI_ERROR";
+
+  // If contents is empty after sanitization, safeguard with user greeting
+  const safeContents =
+    contents.length > 0
+      ? contents
+      : [{ role: "user" as const, parts: [{ text: "Hello" }] }];
 
   for (const model of GEMINI_MODELS) {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+    const isGemma = model.startsWith("gemma");
+    const payload: any = {
+      contents: safeContents,
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 1024,
+      },
+    };
+
+    // Gemma models do not accept system_instruction; fold into user message if needed
+    if (!isGemma) {
+      payload.system_instruction = {
+        parts: [{ text: systemInstruction }],
+      };
+    } else {
+      // Prepend system instruction to first user turn
+      if (payload.contents.length > 0 && payload.contents[0].role === "user") {
+        payload.contents = [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `[System Instruction: ${systemInstruction}]\n\n${payload.contents[0].parts[0]?.text || ""}`,
+              },
+            ],
+          },
+          ...payload.contents.slice(1),
+        ];
+      }
+    }
 
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
         },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemInstruction }],
-          },
-          contents,
-          generationConfig: {
-            temperature: 0.6,
-            maxOutputTokens: 1024,
-          },
-        }),
-        signal: AbortSignal.timeout(20000),
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(7500), // 7.5s per model to comfortably fit within 30s Vercel ceiling
       });
 
       if (!response.ok) {
         const errBody = await response.text().catch(() => "");
         lastError = `${model} HTTP ${response.status}: ${errBody.slice(0, 200)}`;
-        if ([402, 403, 404, 429, 500, 502, 503, 504].includes(response.status)) {
+        lastErrorCode = `GEMINI_${response.status}`;
+        console.warn(`[Sahay AI] ${model} failed with HTTP ${response.status}`);
+        // Fall back on high demand, unavailable, timeouts or missing models
+        if ([400, 402, 403, 404, 429, 500, 502, 503, 504].includes(response.status)) {
           continue;
         }
         throw new Error(lastError);
@@ -143,17 +180,24 @@ async function callGeminiWithFallback(
         return { text, model };
       }
       lastError = `${model} returned an empty response`;
+      lastErrorCode = "GEMINI_EMPTY";
     } catch (e: any) {
       if (e?.name === "AbortError" || e?.name === "TimeoutError") {
-        lastError = `${model} timed out after 20s`;
+        lastError = `${model} timed out after 7.5s`;
+        lastErrorCode = "GEMINI_TIMEOUT";
+        console.warn(`[Sahay AI] ${model} timed out`);
         continue;
       }
       lastError = e instanceof Error ? e.message : String(e);
+      lastErrorCode = "GEMINI_NETWORK";
+      console.warn(`[Sahay AI] ${model} error:`, lastError);
       continue;
     }
   }
 
-  throw new Error(lastError);
+  const finalError: any = new Error(lastError);
+  finalError.code = lastErrorCode;
+  throw finalError;
 }
 
 export async function POST(req: NextRequest) {
@@ -185,38 +229,47 @@ export async function POST(req: NextRequest) {
     const effectiveLanguage = lang ?? language ?? "en";
     const effectivePathname = pathname ?? pageContext ?? "/";
 
-    const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+    const flatHistory: Array<{ role: "user" | "model"; text: string }> = [];
 
+    // Filter out initial welcome or error bubbles and build flat list
     for (const item of rawHistory.slice(-12)) {
       const itemText = (item.content ?? item.text ?? "").trim();
       if (!itemText) continue;
+      // Skip common static greetings in history
+      if (
+        itemText.startsWith("Hello! I am Sahay AI") ||
+        itemText.startsWith("নমস্কাৰ! মই সহায় এআই") ||
+        itemText.startsWith("नमस्ते! मैं सहाय AI") ||
+        itemText.startsWith("নমস্কার! আমি সহায় এআই") ||
+        itemText.includes("temporary connection issue")
+      ) {
+        continue;
+      }
+
       const roleStr = item.role || item.sender || "user";
-      contents.push({
+      flatHistory.push({
         role: roleStr === "assistant" || roleStr === "model" ? "model" : "user",
-        parts: [{ text: itemText }],
+        text: itemText,
       });
     }
 
     const latestUserMessage = (message ?? prompt ?? query ?? text ?? "").trim();
     if (latestUserMessage) {
-      const lastEntry = contents[contents.length - 1];
-      if (
-        !lastEntry ||
-        lastEntry.role !== "user" ||
-        lastEntry.parts[0]?.text !== latestUserMessage
-      ) {
-        contents.push({ role: "user", parts: [{ text: latestUserMessage }] });
-      }
+      flatHistory.push({ role: "user", text: latestUserMessage });
     }
 
-    if (contents.length === 0) {
+    // Apply strict turn sanitization
+    const sanitizedContents = sanitizeGeminiContents(flatHistory);
+
+    if (sanitizedContents.length === 0) {
       return NextResponse.json(
         { error: "Please enter a message.", success: false },
         { status: 400 }
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    // Clean key of surrounding quotes and whitespace
+    const apiKey = process.env.GEMINI_API_KEY?.trim().replace(/^["']|["']$/g, "");
     if (!apiKey) {
       console.error("[Sahay AI] GEMINI_API_KEY is missing in environment.");
       const fallbackText =
@@ -228,6 +281,7 @@ export async function POST(req: NextRequest) {
           answer: fallbackText,
           response: fallbackText,
           fallback: true,
+          errorCode: "GEMINI_MISSING_KEY",
           citations: [
             {
               id: "drishti-dashboard",
@@ -247,16 +301,11 @@ export async function POST(req: NextRequest) {
       effectivePathname,
       projectContext
     );
-    const result = await callGeminiWithFallback(apiKey, systemInstruction, contents);
-
-    const citations = [
-      {
-        id: "drishti-dashboard",
-        title: "Drishti Decentralised Scheme Monitoring",
-        url: "/dashboard",
-        type: "PROJECT",
-      },
-    ];
+    const result = await callGeminiWithFallback(
+      apiKey,
+      systemInstruction,
+      sanitizedContents
+    );
 
     return NextResponse.json(
       {
@@ -266,7 +315,14 @@ export async function POST(req: NextRequest) {
         response: result.text,
         model: result.model,
         fallback: false,
-        citations,
+        citations: [
+          {
+            id: "drishti-dashboard",
+            title: "Drishti Decentralised Scheme Monitoring",
+            url: "/dashboard",
+            type: "PROJECT",
+          },
+        ],
         suggestedAction: {
           label: "View Scheme Dashboard",
           url: "/dashboard",
@@ -274,9 +330,10 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (err) {
+  } catch (err: any) {
+    const errCode = err?.code || "GEMINI_ERROR";
     console.error(
-      "[Sahay AI] Error processing query:",
+      `[Sahay AI] Error processing query (${errCode}):`,
       err instanceof Error ? err.message : err
     );
     const fallbackText =
@@ -288,6 +345,7 @@ export async function POST(req: NextRequest) {
         answer: fallbackText,
         response: fallbackText,
         fallback: true,
+        errorCode: errCode,
         citations: [
           {
             id: "drishti-dashboard",
