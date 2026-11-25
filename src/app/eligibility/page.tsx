@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { Sparkles, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ASSAM_DISTRICTS } from '@/lib/data/assam-districts';
 
 interface SchemeMatch {
   code: string;
@@ -182,13 +183,9 @@ export default function EligibilityPage() {
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full text-base sm:text-xs px-4 py-3 rounded-2xl bg-surface dark:bg-slate-800 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary"
                 >
-                  <option value="Darrang">Darrang</option>
-                  <option value="Kamrup">Kamrup Metro</option>
-                  <option value="Jorhat">Jorhat</option>
-                  <option value="Dhubri">Dhubri</option>
-                  <option value="Lakhimpur">Lakhimpur</option>
-                  <option value="Golaghat">Golaghat</option>
-                  <option value="Cachar">Cachar</option>
+                  {ASSAM_DISTRICTS.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
 

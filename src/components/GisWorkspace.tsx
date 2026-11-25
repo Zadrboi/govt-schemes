@@ -7,6 +7,7 @@ import {
   CANONICAL_PROJECTS, 
   CANONICAL_SCHEMES 
 } from '@/lib/data/canonical';
+import { ASSAM_DISTRICTS } from '@/lib/data/assam-districts';
 import { 
   MapPin, Layers, Filter, AlertTriangle, ShieldCheck, 
   ExternalLink, CheckCircle2, Flame, Eye, Table as TableIcon,
@@ -58,12 +59,10 @@ export default function GisWorkspace({
     return () => observer.disconnect();
   }, []);
 
-  // Filter options derived from data
+  // Filter options derived from data & canonical districts
   const districts = useMemo(() => {
-    const set = new Set<string>();
-    projects.forEach(p => p.district && set.add(p.district));
-    return Array.from(set).sort();
-  }, [projects]);
+    return ASSAM_DISTRICTS;
+  }, []);
 
   const coDistricts = useMemo(() => {
     const set = new Set<string>();

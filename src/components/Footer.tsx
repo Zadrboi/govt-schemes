@@ -69,23 +69,28 @@ export const Footer: React.FC = () => {
               {t.footerIntegrity || 'Integrity'}
             </span>
             <ul className="space-y-2 text-ink-muted dark:text-slate-300">
-              <li><span>OWASP ASVS v4.0</span></li>
-              <li><span>GIGW 3.0 Conformance</span></li>
-              <li><span>Tamper-Evident SHA-256</span></li>
-              <li><span>Offline PWA Sync</span></li>
+              <li><span>OWASP ASVS Security Controls</span></li>
+              <li><span>GIGW 3.0 Planning Baseline</span></li>
+              <li><span>SHA-256 Audit Checksums (Demo)</span></li>
+              <li><span>Local-First Offline Queue (Demo)</span></li>
             </ul>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-black/10 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center text-[11px] text-ink-muted dark:text-slate-400 gap-4 pr-0 md:pr-16">
-        <div>
-          © {new Date().getFullYear()} {t.footerCopyright || 'Drishti (দৃষ্টি). Open Statutory Public Ledger.'}
+      <div className="max-w-6xl mx-auto mt-12 pt-6 border-t border-black/10 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center text-[11px] text-ink-muted dark:text-slate-400 gap-4 pr-0 md:pr-16">
+        <div className="space-y-1 text-center md:text-left">
+          <div>
+            © {new Date().getFullYear()} {t.footerCopyright || 'Drishti (দৃষ্টি). Open Statutory Public Ledger.'}
+          </div>
+          <div className="text-[10px] text-ink-muted/80 dark:text-slate-500">
+            Independent civic monitoring prototype for demonstration — not an official Government of Assam or MDoNER portal.
+          </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span className="text-primary dark:text-sky-400 font-medium">Drishti Editorial Standard</span>
           <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-          <span>{t.footerZeroSlop || 'Zero-slop interface'}</span>
+          <span>Zero-slop interface</span>
         </div>
       </div>
     </footer>

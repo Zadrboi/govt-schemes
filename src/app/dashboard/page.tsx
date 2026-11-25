@@ -9,7 +9,7 @@ import {
   Building2, MapPin, AlertTriangle, CheckCircle2,
   ArrowUpRight, Search, Download, FileSpreadsheet, Plus,
   Layers, ShieldAlert, Sparkles, Activity, Clock, Users,
-  CheckCheck, AlertCircle, FileText, ChevronRight
+  CheckCheck, AlertCircle, FileText, ChevronRight, Lock
 } from 'lucide-react';
 import { 
   CANONICAL_PROJECTS, 
@@ -43,7 +43,8 @@ type UserRole =
 
 export default function DashboardPage() {
   const { t } = useLanguage();
-  const [role, setRole] = useState<UserRole>('DC_COMMISSIONER');
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [role, setRole] = useState<UserRole>('CITIZEN');
   const [projects, setProjects] = useState<CanonicalProject[]>(CANONICAL_PROJECTS);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -53,6 +54,22 @@ export default function DashboardPage() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [eventCategoryFilter, setEventCategoryFilter] = useState<'ALL' | 'FIELD' | 'FINANCIAL' | 'ADMINISTRATIVE' | 'CITIZEN' | 'SYSTEM'>('ALL');
   const [summonAlert, setSummonAlert] = useState<string | null>(null);
+
+  // Check current session
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        const u = data?.data?.user || data?.user;
+        if (u) {
+          setCurrentUser(u);
+          if (u.role && u.role !== 'CITIZEN') {
+            setRole(u.role as UserRole);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Load from API with canonical fallback
   useEffect(() => {
@@ -81,6 +98,14 @@ export default function DashboardPage() {
   }, [selectedDistrict, selectedStatus]);
 
   const switchRole = async (newRole: UserRole) => {
+    // If user is guest/unauthenticated and tries to access administrative roles, prompt sign in
+    if (!currentUser && newRole !== 'CITIZEN') {
+      const confirmed = window.confirm('Administrative Role Gate:\nSign in with an Official or Auditor demo account to access administrative queues.\n\nWould you like to go to the demo sign-in page now?');
+      if (confirmed) {
+        window.location.href = '/login';
+        return;
+      }
+    }
     setRole(newRole);
     const emailMap: Record<UserRole, string> = {
       CITIZEN: 'citizen@demo.yojna',
@@ -96,6 +121,12 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailMap[newRole], password: 'demo123' }),
       });
+      // Refresh current user state
+      const meRes = await fetch('/api/auth/me');
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData?.user) setCurrentUser(meData.user);
+      }
     } catch {
       // Offline fallback
     }
@@ -172,22 +203,48 @@ export default function DashboardPage() {
 
         {/* Action Buttons: Register Scheme Work & Export */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setIsRegisterModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Register Scheme Work</span>
-          </button>
+          {currentUser && currentUser.role !== 'CITIZEN' ? (
+            <button
+              onClick={() => setIsRegisterModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Register Scheme Work</span>
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary dark:text-sky-400 text-xs font-semibold border border-primary/20 shadow-xs transition-all"
+              title="Official authentication required to register government works"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Sign In to Register Work</span>
+            </Link>
+          )}
 
-          <a
-            href="/api/projects"
-            download="drishti_schemes_canonical.json"
+          <button
+            onClick={() => {
+              const headers = [
+                '# Drishti Demonstration Dataset - Public Export',
+                `# Exported: ${new Date().toISOString()}`,
+                'workCode,title,scheme,district,coDistrict,sanctionedCostCr,fundReleasedCr,physicalCompletionPct,status,governanceType,contractor'
+              ];
+              const rows = projects.map(p => 
+                `"${p.workCode}","${p.title.replace(/"/g, '""')}","${p.scheme}","${p.district}","${p.coDistrict || ''}",${p.sanctionedCost},${p.fundReleased},${p.physicalCompletionPct},"${p.status}","${p.governanceType}","${(p.contractor || '').replace(/"/g, '""')}"`
+              );
+              const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent([...headers, ...rows].join('\n'));
+              const link = document.createElement('a');
+              link.setAttribute('href', csvContent);
+              link.setAttribute('download', `drishti_public_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-ink dark:text-slate-200 text-xs font-medium border border-line dark:border-slate-700 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Export Verified Ledger</span>
-          </a>
+            <span>Export Public Ledger (CSV)</span>
+          </button>
         </div>
       </div>
 
@@ -205,16 +262,17 @@ export default function DashboardPage() {
         <div className="flex items-center gap-1.5 p-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-line dark:border-slate-800 shadow-xs overflow-x-auto no-scrollbar">
           {(
             [
-              { key: 'DC_COMMISSIONER', label: '1. District Commissioner (DC)', icon: ShieldAlert },
-              { key: 'CO_DISTRICT', label: '2. Co-District Comm.', icon: Building2 },
-              { key: 'FIELD_OFFICER', label: '3. Block / ADC Officer', icon: MapPin },
-              { key: 'STATE_PLANNING', label: '4. State Planning Dept', icon: FileSpreadsheet },
-              { key: 'MDONER_NEC', label: '5. MDoNER / NEC', icon: Layers },
-              { key: 'CITIZEN', label: '6. Citizen / Gram Sabha', icon: Users },
+              { key: 'DC_COMMISSIONER', label: '1. District Commissioner (DC)', icon: ShieldAlert, admin: true },
+              { key: 'CO_DISTRICT', label: '2. Co-District Comm.', icon: Building2, admin: true },
+              { key: 'FIELD_OFFICER', label: '3. Block / ADC Officer', icon: MapPin, admin: true },
+              { key: 'STATE_PLANNING', label: '4. State Planning Dept', icon: FileSpreadsheet, admin: true },
+              { key: 'MDONER_NEC', label: '5. MDoNER / NEC', icon: Layers, admin: true },
+              { key: 'CITIZEN', label: '6. Citizen / Gram Sabha', icon: Users, admin: false },
             ] as const
           ).map((item) => {
             const Icon = item.icon;
             const isSelected = role === item.key;
+            const isLocked = item.admin && !currentUser;
             return (
               <button
                 key={item.key}
@@ -224,9 +282,11 @@ export default function DashboardPage() {
                     ? 'bg-primary text-white shadow-sm ring-2 ring-primary/20'
                     : 'text-ink-muted dark:text-slate-300 hover:text-ink hover:bg-surface dark:hover:bg-slate-800'
                 }`}
+                title={isLocked ? 'Demo Official sign in required' : undefined}
               >
                 <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-primary dark:text-sky-400'}`} />
                 <span>{item.label}</span>
+                {isLocked && <Lock className="w-3 h-3 text-slate-400 opacity-70 ml-0.5" />}
               </button>
             );
           })}
@@ -259,7 +319,7 @@ export default function DashboardPage() {
               </h3>
             </div>
             <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-red-200 dark:bg-red-900 text-red-900 dark:text-red-200">
-              {anomalies.length} Exceptions Requiring Executive Action
+              {anomalies.length} {anomalies.length === 1 ? 'Exception' : 'Exceptions'} Requiring Executive Action
             </span>
           </div>
 

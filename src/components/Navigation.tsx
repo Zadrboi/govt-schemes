@@ -8,7 +8,7 @@ import AccessibilityMenu from './AccessibilityMenu';
 import { useAccessibility } from './AccessibilityProvider';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { SupportedLanguage } from '@/lib/i18n/translations';
-import { Globe, ArrowUpRight, Menu, X, Sun, Moon, User } from 'lucide-react';
+import { Globe, ArrowUpRight, Menu, X, Sun, Moon, User, LogOut } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
   const pathname = usePathname();
@@ -16,6 +16,29 @@ export const Navigation: React.FC = () => {
   const { settings, toggleTheme } = useAccessibility();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState<{ id: string; name: string; role: string } | null>(null);
+
+  // Synchronize session state from /api/auth/me
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.success && d?.data?.user) {
+          setSessionUser(d.data.user);
+        } else {
+          setSessionUser(null);
+        }
+      })
+      .catch(() => setSessionUser(null));
+  }, [pathname]);
+
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    setSessionUser(null);
+    window.location.href = '/login';
+  };
 
   // Close mobile menu on Escape key
   useEffect(() => {
@@ -202,15 +225,36 @@ export const Navigation: React.FC = () => {
             <ArrowUpRight className="w-4 h-4 opacity-80" />
           </Link>
 
-          {/* Authenticated / Officer Sign-In Link */}
-          <Link
-            href="/login"
-            onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-between px-4 py-2.5 bg-surface dark:bg-slate-800/70 hover:bg-pill/60 text-ink dark:text-slate-200 text-xs font-medium rounded-2xl transition-colors"
-          >
-            <span>Officer Sign In &amp; Access</span>
-            <User className="w-3.5 h-3.5 text-primary dark:text-sky-400" />
-          </Link>
+          {/* Authenticated User Status or Sign-In Link */}
+          {sessionUser ? (
+            <div className="flex items-center justify-between px-4 py-2.5 bg-surface dark:bg-slate-800/70 text-ink dark:text-slate-200 text-xs font-medium rounded-2xl">
+              <div className="flex flex-col">
+                <span className="font-semibold">{sessionUser.name}</span>
+                <span className="text-[10px] text-ink-muted dark:text-slate-400">{sessionUser.role?.replace('_', ' ')}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleSignOut();
+                }}
+                className="text-xs text-red-600 font-semibold hover:underline"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center justify-between px-4 py-2.5 bg-surface dark:bg-slate-800/70 hover:bg-pill/60 text-ink dark:text-slate-200 text-xs font-medium rounded-2xl transition-colors"
+            >
+              <div className="flex flex-col">
+                <span>Citizen (Guest)</span>
+                <span className="text-[10px] text-primary dark:text-sky-400">Sign in as Official / Evaluator →</span>
+              </div>
+              <User className="w-3.5 h-3.5 text-primary dark:text-sky-400" />
+            </Link>
+          )}
         </div>
       )}
     </header>

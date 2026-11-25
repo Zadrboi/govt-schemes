@@ -6,6 +6,7 @@ import Image from 'next/image';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { getCanonicalKpis } from '@/lib/data/canonical';
 import { 
   ArrowUpRight, ArrowRight, ShieldCheck,
   Layers, QrCode, WifiOff, Cpu, Database
@@ -21,13 +22,14 @@ export default function LandingPage() {
   const statsSectionRef = useRef<HTMLDivElement>(null);
   const [activeStep, setActiveStep] = useState<number>(1);
   const { t } = useLanguage();
+  const kpis = getCanonicalKpis();
 
-  // Animated counters
+  // Animated counters directly synced to canonical dataset
   const [counts, setCounts] = useState({
-    audits: 0,
-    districts: 0,
-    ledgerMatch: 0,
-    languages: 0,
+    totalWorks: kpis.totalWorks,
+    districts: kpis.districtsCovered,
+    ledgerMatch: kpis.ledgerMatchPct,
+    activeExceptions: kpis.activeExceptions,
   });
 
   useEffect(() => {
@@ -55,20 +57,20 @@ export default function LandingPage() {
       trigger: statsSectionRef.current,
       start: 'top 80%',
       onEnter: () => {
-        const obj = { audits: 0, districts: 0, ledgerMatch: 0, languages: 0 };
+        const obj = { totalWorks: 0, districts: 0, ledgerMatch: 0, activeExceptions: 0 };
         gsap.to(obj, {
-          audits: 40,
-          districts: 35,
-          ledgerMatch: 99.2,
-          languages: 4,
-          duration: prefersReducedMotion ? 0.01 : 2,
+          totalWorks: kpis.totalWorks,
+          districts: kpis.districtsCovered,
+          ledgerMatch: kpis.ledgerMatchPct,
+          activeExceptions: kpis.activeExceptions,
+          duration: prefersReducedMotion ? 0.01 : 1.5,
           ease: 'power2.out',
           onUpdate: () => {
             setCounts({
-              audits: Math.floor(obj.audits),
+              totalWorks: Math.floor(obj.totalWorks),
               districts: Math.floor(obj.districts),
               ledgerMatch: Number(obj.ledgerMatch.toFixed(1)),
-              languages: Math.floor(obj.languages),
+              activeExceptions: Math.floor(obj.activeExceptions),
             });
           },
         });
@@ -79,7 +81,7 @@ export default function LandingPage() {
     return () => {
       statsTrigger.kill();
     };
-  }, []);
+  }, [kpis.totalWorks, kpis.districtsCovered, kpis.ledgerMatchPct, kpis.activeExceptions]);
 
   return (
     <div className="w-full flex flex-col overflow-hidden bg-white dark:bg-[#070c16] text-[#0f172a] dark:text-[#eef4fc] transition-colors pb-28">
@@ -103,7 +105,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#e0edff] text-[#1e3a8a] dark:bg-blue-950 dark:text-blue-200 border border-[#bae6fd] dark:border-blue-900 text-xs font-medium tracking-tight shadow-xs transition-transform hover:scale-105">
               <span className="w-2 h-2 rounded-full bg-[#0284c7] animate-pulse"></span>
               <span>{t.heroBadge || 'Real-time public infrastructure ledger'}</span>
-              <span className="text-[10px] opacity-70">GIGW 3.0</span>
+              <span className="text-[10px] opacity-70">GIGW 3.0 Planning Baseline</span>
             </div>
           </div>
 
@@ -195,13 +197,13 @@ export default function LandingPage() {
           <div className="text-center max-w-2xl mx-auto mb-16">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#e0edff] dark:bg-blue-950 text-[#1e3a8a] dark:text-blue-200 text-xs font-semibold tracking-tight mb-4">
               <span className="w-2 h-2 rounded-full bg-[#0284c7]"></span>
-              <span>Live across Assam</span>
+              <span>Simulated Demo Dataset • Live across Assam</span>
             </div>
             <h2 className="editorial-headline text-3xl sm:text-4xl md:text-5xl font-normal tracking-tighter text-[#0f172a] dark:text-white leading-tight">
-              {t.kpiHeading || '12,400+ works verified in the open.'}
+              15 Canonical Works verified in the open.
             </h2>
             <p className="mt-3 text-[#475569] dark:text-[#94a3b8] text-base font-normal tracking-tight">
-              {t.kpiSubtitle || 'Radical transparency at village level. No locked PDF reports, no delayed audits.'}
+              Radical transparency across 11 schemes. Real-time reconciliation data computed directly from the Drishti statutory demo ledger.
             </p>
           </div>
 
@@ -210,68 +212,68 @@ export default function LandingPage() {
             {/* Card 1 */}
             <div className="ticket-card rounded-2xl p-7 flex flex-col justify-between min-h-[190px] shadow-[0_6px_20px_rgba(186,230,253,0.35)] dark:shadow-none transition-transform duration-300 hover:-translate-y-1">
               <div className="flex items-center justify-between text-[#0f172a] text-xs font-semibold tracking-tight uppercase">
-                <span>{t.kpi1Val || 'Audit Velocity'}</span>
+                <span>Canonical Ledger</span>
                 <span className="w-2 h-2 rounded-full bg-[#1d4ed8]"></span>
               </div>
               <div className="my-auto">
                 <div className="text-4xl lg:text-[42px] font-bold tracking-tighter text-[#0f172a] tabular-nums">
-                  {counts.audits}%
+                  {counts.totalWorks}
                 </div>
-                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">{t.kpi1Lbl || 'Faster Audits'}</div>
+                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">Canonical Works</div>
               </div>
               <div className="text-[12px] text-[#334155] pt-2 border-t border-[#7dd3fc]">
-                {t.kpi1Sub || 'From sanction to field dispatch'}
+                Simulated demo dataset across 11 schemes
               </div>
             </div>
 
             {/* Card 2 */}
             <div className="ticket-card rounded-2xl p-7 flex flex-col justify-between min-h-[190px] shadow-[0_6px_20px_rgba(186,230,253,0.35)] dark:shadow-none transition-transform duration-300 hover:-translate-y-1">
               <div className="flex items-center justify-between text-[#0f172a] text-xs font-semibold tracking-tight uppercase">
-                <span>{t.kpi2Val || 'Geographic Reach'}</span>
+                <span>Geographic Reach</span>
                 <span className="w-2 h-2 rounded-full bg-[#1d4ed8]"></span>
               </div>
               <div className="my-auto">
                 <div className="text-4xl lg:text-[42px] font-bold tracking-tighter text-[#0f172a] tabular-nums">
-                  {counts.districts}+
+                  {counts.districts}
                 </div>
-                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">{t.kpi2Lbl || 'Districts Connected'}</div>
+                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">Districts Seeded</div>
               </div>
               <div className="text-[12px] text-[#334155] pt-2 border-t border-[#7dd3fc]">
-                {t.kpi2Sub || 'From Dhubri to Tinsukia'}
+                All 35 official districts supported statewide
               </div>
             </div>
 
             {/* Card 3 */}
             <div className="ticket-card rounded-2xl p-7 flex flex-col justify-between min-h-[190px] shadow-[0_6px_20px_rgba(186,230,253,0.35)] dark:shadow-none transition-transform duration-300 hover:-translate-y-1">
               <div className="flex items-center justify-between text-[#0f172a] text-xs font-semibold tracking-tight uppercase">
-                <span>{t.kpi3Val || 'Fiduciary Integrity'}</span>
+                <span>Fiduciary Integrity</span>
                 <span className="w-2 h-2 rounded-full bg-[#1d4ed8]"></span>
               </div>
               <div className="my-auto">
                 <div className="text-4xl lg:text-[42px] font-bold tracking-tighter text-[#0f172a] tabular-nums">
                   {counts.ledgerMatch}%
                 </div>
-                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">{t.kpi3Lbl || 'Ledger Match'}</div>
+                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">Reconciliation Match</div>
               </div>
               <div className="text-[12px] text-[#334155] pt-2 border-t border-[#7dd3fc]">
-                {t.kpi3Sub || 'Direct Treasury to geotag proof'}
+                {kpis.totalWorks - kpis.activeExceptions}/{kpis.totalWorks} works without variance gap
               </div>
             </div>
 
             {/* Card 4 */}
             <div className="ticket-card rounded-2xl p-7 flex flex-col justify-between min-h-[190px] shadow-[0_6px_20px_rgba(186,230,253,0.35)] dark:shadow-none transition-transform duration-300 hover:-translate-y-1">
               <div className="flex items-center justify-between text-[#0f172a] text-xs font-semibold tracking-tight uppercase">
-                <span>{t.kpi4Val || 'Linguistic Parity'}</span>
-                <span className="w-2 h-2 rounded-full bg-[#1d4ed8]"></span>
+                <span>Statutory Alerts</span>
+                <span className="w-2 h-2 rounded-full bg-red-600"></span>
               </div>
               <div className="my-auto">
-                <div className="text-4xl lg:text-[42px] font-bold tracking-tighter text-[#0f172a] tabular-nums">
-                  {counts.languages}
+                <div className="text-4xl lg:text-[42px] font-bold tracking-tighter text-red-700 tabular-nums">
+                  {counts.activeExceptions}
                 </div>
-                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">{t.kpi4Lbl || 'Official Languages'}</div>
+                <div className="text-sm font-medium text-[#0f172a] mt-1 tracking-tight">Active Exception</div>
               </div>
               <div className="text-[12px] text-[#334155] pt-2 border-t border-[#7dd3fc]">
-                {t.kpi4Sub || 'Assamese, Bodo, Bengali & English'}
+                Flagship Sipajhar WSS (80% debit vs 35% physical)
               </div>
             </div>
           </div>
@@ -338,7 +340,7 @@ export default function LandingPage() {
               <span>{t.processTag || 'How Drishti works'}</span>
             </div>
             <h2 className="editorial-headline text-3xl sm:text-4xl md:text-5xl font-normal tracking-tighter text-[#0f172a] dark:text-white leading-tight">
-              {t.processHeading || 'Clarity at every step of the'} <span className="italic text-[#1d4ed8] dark:text-blue-400">lifecycle.</span>
+              {t.processHeading || 'Clarity at every step of the lifecycle.'}
             </h2>
             <p className="mt-3 text-[#475569] dark:text-[#94a3b8] text-base font-normal tracking-tight">
               From cabinet financial sanctions down to grass-root soil testing and gram sabha approval.

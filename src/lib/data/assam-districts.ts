@@ -1,0 +1,42 @@
+/**
+ * Canonical list of all 35 official administrative districts of Assam
+ * in strict alphabetical order.
+ * Reference: Government of Assam, Department of General Administration.
+ */
+export const ASSAM_DISTRICTS: string[] = [
+  'Bajali',
+  'Baksa',
+  'Barpeta',
+  'Biswanath',
+  'Bongaigaon',
+  'Cachar',
+  'Charaideo',
+  'Chirang',
+  'Darrang',
+  'Dhemaji',
+  'Dhubri',
+  'Dibrugarh',
+  'Dima Hasao',
+  'Goalpara',
+  'Golaghat',
+  'Hailakandi',
+  'Hojai',
+  'Jorhat',
+  'Kamrup',
+  'Kamrup Metropolitan',
+  'Karbi Anglong',
+  'Karimganj (Sribhumi)',
+  'Kokrajhar',
+  'Lakhimpur',
+  'Majuli',
+  'Morigaon',
+  'Nagaon',
+  'Nalbari',
+  'Sivasagar',
+  'Sonitpur',
+  'South Salmara-Mankachar',
+  'Tamulpur',
+  'Tinsukia',
+  'Udalguri',
+  'West Karbi Anglong',
+];

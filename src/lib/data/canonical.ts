@@ -51,7 +51,7 @@ export interface CanonicalProject {
     solarCapacityKw?: number;
   };
   imagePath: string;
-  status: 'PLANNED' | 'ONGOING' | 'STALLED' | 'COMPLETED' | 'CLOSED';
+  status: 'PLANNED' | 'ONGOING' | 'ON_TRACK' | 'IN_PROGRESS' | 'STALLED' | 'COMPLETED' | 'CLOSED';
   stalledAlert?: boolean;
   mismatchAlert?: boolean;
   delayRiskScore: number; // 0-100
@@ -307,7 +307,7 @@ export const CANONICAL_PROJECTS: CanonicalProject[] = [
     ucStatus: 'PENDING',
     pendingAmount: 2.20,
     pendingUcAgeDays: 142,
-    lastInspectionDate: '2026-01-15T10:30:00.000Z',
+    lastInspectionDate: '2026-09-12T10:30:00.000Z',
     daysSinceLastInspection: 74,
     outcomeIndicators: {
       households: 2400,
@@ -334,7 +334,7 @@ export const CANONICAL_PROJECTS: CanonicalProject[] = [
         officerName: 'Pranjal Saikia, AEE',
         gpsLat: 26.4352,
         gpsLng: 91.8841,
-        date: '2026-01-15T10:30:00.000Z',
+        date: '2026-09-12T10:30:00.000Z',
         photoPath: '/images/015_Student_at_the_exhibition_stalls_of_the_Public_Health_Engineering_Depa.jpg',
         notes: 'Site visit confirmed pipeline laying stalled at Km 4.2. Intake well excavation abandoned since January. High discrepancy with claimed 80% disbursement. Show-cause initiated under Section 14(2).',
         flags: { stalledWork: true, abandonedExcavation: true, contractorAbsent: true },
@@ -724,14 +724,14 @@ export const CANONICAL_PROJECTS: CanonicalProject[] = [
     ucStatus: 'VERIFIED',
     pendingAmount: 0.05,
     pendingUcAgeDays: 0,
-    lastInspectionDate: '2026-03-12T11:30:00.000Z',
+    lastInspectionDate: '2026-11-12T11:30:00.000Z',
     daysSinceLastInspection: 13,
     outcomeIndicators: {
       classrooms: 4,
       beneficiaries: 1200,
     },
     imagePath: '/images/007_A_photograph_taken_from_the_roadside_of_historic_Garh_Ali_Jorhat_Ass.jpg',
-    status: 'COMPLETED',
+    status: 'ONGOING',
     delayRiskScore: 10,
     evidenceScore: 94,
     grievancesCount: 0,
@@ -773,14 +773,14 @@ export const CANONICAL_PROJECTS: CanonicalProject[] = [
     ucStatus: 'VERIFIED',
     pendingAmount: 0.05,
     pendingUcAgeDays: 0,
-    lastInspectionDate: '2026-03-14T10:00:00.000Z',
+    lastInspectionDate: '2026-11-14T10:00:00.000Z',
     daysSinceLastInspection: 11,
     outcomeIndicators: {
       beds: 12,
       beneficiaries: 16000,
     },
     imagePath: '/images/Community_hall,_Tezpur_University.jpg',
-    status: 'COMPLETED',
+    status: 'ONGOING',
     delayRiskScore: 12,
     evidenceScore: 90,
     grievancesCount: 0,
@@ -1130,7 +1130,7 @@ NOW THEREFORE, all further fiscal disbursements are hereby FROZEN. The contracto
 export const CANONICAL_EVENTS: CanonicalEvent[] = [
   {
     id: 'evt-01',
-    timestamp: '2026-03-24T06:00:00Z',
+    timestamp: '2026-11-24T06:00:00Z',
     type: 'ADMINISTRATIVE',
     title: 'Statutory Stop-Work Notice Enforced under Section 14(2)',
     description: 'Planning & Transformation Department froze ₹2.20 Cr remaining tranche for Sipajhar Rural WSS (AS-DAR-0821) due to 45% fiscal-physical gap.',
@@ -1143,9 +1143,9 @@ export const CANONICAL_EVENTS: CanonicalEvent[] = [
   },
   {
     id: 'evt-02',
-    timestamp: '2026-03-22T08:30:00Z',
+    timestamp: '2026-11-20T08:30:00Z',
     type: 'FINANCIAL',
-    title: 'SOPD-G Q4 Tranche Disbursement Released',
+    title: 'SOPD-G Q3 Tranche Disbursement Released',
     description: '₹14.50 Crore direct release to Bodoland Territorial Council treasury for 22 village road stretches in Kokrajhar.',
     actor: 'Finance Dept Dispur',
     projectWorkCode: 'AS-BTC-0412',
@@ -1156,7 +1156,7 @@ export const CANONICAL_EVENTS: CanonicalEvent[] = [
   },
   {
     id: 'evt-03',
-    timestamp: '2026-03-18T11:00:00Z',
+    timestamp: '2026-11-12T11:00:00Z',
     type: 'FIELD',
     title: 'Geo-Tagged Photo Audit & Milestone Telemetry Uploaded',
     description: 'Field Officer Dr. Himashree Sarma uploaded cryptographically signed EXIF photos verifying 68% progress at Rangia Civil Hospital.',
@@ -1169,10 +1169,10 @@ export const CANONICAL_EVENTS: CanonicalEvent[] = [
   },
   {
     id: 'evt-04',
-    timestamp: '2026-03-16T14:45:00Z',
+    timestamp: '2026-10-25T14:45:00Z',
     type: 'CITIZEN',
     title: 'Gram Sabha Attestation & Citizen Verification Vote Recorded',
-    description: 'Gaon Sabha #14 Titabor officially voted 42–1 to attest completed civil works for Garh Ali High School Science Lab.',
+    description: 'Gaon Sabha #14 Titabor officially voted 42–1 to attest civil works progress for Garh Ali High School Science Lab.',
     actor: 'Gram Sabha Titabor',
     projectWorkCode: 'AS-JOR-0518',
     district: 'Jorhat',
@@ -1182,7 +1182,7 @@ export const CANONICAL_EVENTS: CanonicalEvent[] = [
   },
   {
     id: 'evt-05',
-    timestamp: '2026-03-15T09:15:00Z',
+    timestamp: '2026-09-15T09:15:00Z',
     type: 'SYSTEM',
     title: 'Sentinel-2 Multi-Spectral Surface Verification Completed',
     description: 'Automated satellite pass verified 24.5km embankment alignment on Majuli Island with 4.8% delta to physical survey.',
@@ -1195,7 +1195,7 @@ export const CANONICAL_EVENTS: CanonicalEvent[] = [
   },
   {
     id: 'evt-06',
-    timestamp: '2026-03-14T10:00:00Z',
+    timestamp: '2026-09-12T10:00:00Z',
     type: 'CITIZEN',
     title: 'RTPS Citizen Grievance Ticket Dispatched (DRI-GRV-2026-0821)',
     description: 'Resident of Sipajhar filed formal grievance citing lack of drinking water supply and abandoned intake well.',
@@ -1224,12 +1224,12 @@ export const CANONICAL_GRIEVANCES: CanonicalGrievance[] = [
     citizenName: 'Bhaben Deka',
     contactNumber: '+91 94350 *****',
     status: 'ACTION_REQUIRED',
-    createdAt: '2026-03-14T10:00:00Z',
-    updatedAt: '2026-03-24T06:30:00Z',
+    createdAt: '2026-09-12T10:00:00Z',
+    updatedAt: '2026-11-24T06:30:00Z',
     timeline: [
-      { status: 'SUBMITTED', date: '2026-03-14T10:00:00Z', note: 'Grievance submitted by citizen via Drishti QR scan.' },
-      { status: 'UNDER_REVIEW', date: '2026-03-16T11:00:00Z', note: 'Assigned to Co-District Commissioner Sipajhar.', officer: 'Sipajhar SDO(Civil)' },
-      { status: 'ACTION_REQUIRED', date: '2026-03-24T06:30:00Z', note: 'Section 14(2) stop-work order issued. Emergency water bowsers ordered.', officer: 'Deputy Commissioner Darrang' },
+      { status: 'SUBMITTED', date: '2026-09-12T10:00:00Z', note: 'Grievance submitted by citizen via Drishti QR scan.' },
+      { status: 'UNDER_REVIEW', date: '2026-09-15T11:00:00Z', note: 'Assigned to Co-District Commissioner Sipajhar.', officer: 'Sipajhar SDO(Civil)' },
+      { status: 'ACTION_REQUIRED', date: '2026-11-24T06:30:00Z', note: 'Section 14(2) stop-work order issued. Emergency water bowsers ordered.', officer: 'Deputy Commissioner Darrang' },
     ],
   },
   {
@@ -1244,11 +1244,35 @@ export const CANONICAL_GRIEVANCES: CanonicalGrievance[] = [
     citizenName: 'Anil Basumatary',
     contactNumber: '+91 98640 *****',
     status: 'UNDER_REVIEW',
-    createdAt: '2026-03-10T14:00:00Z',
-    updatedAt: '2026-03-12T09:30:00Z',
+    createdAt: '2026-10-10T14:00:00Z',
+    updatedAt: '2026-10-14T09:30:00Z',
     timeline: [
-      { status: 'SUBMITTED', date: '2026-03-10T14:00:00Z', note: 'Submitted via citizen portal.' },
-      { status: 'UNDER_REVIEW', date: '2026-03-12T09:30:00Z', note: 'Forwarded to BTC AE Dotma Block.' },
+      { status: 'SUBMITTED', date: '2026-10-10T14:00:00Z', note: 'Submitted via citizen portal.' },
+      { status: 'UNDER_REVIEW', date: '2026-10-14T09:30:00Z', note: 'Forwarded to BTC AE Dotma Block.' },
     ],
   },
 ];
+
+// =========================================================================
+// 6. CANONICAL KPI HELPER (100% DATA-DRIVEN, ELIMINATING OVERCLAIMS)
+// =========================================================================
+export function getCanonicalKpis() {
+  const totalWorks = CANONICAL_PROJECTS.length; // Exactly 15
+  const districtsCovered = new Set(CANONICAL_PROJECTS.map((p) => p.district)).size; // 14 seeded
+  const coDistrictsCovered = new Set(CANONICAL_PROJECTS.map((p) => p.coDistrict)).size; // 15
+  const activeExceptions = CANONICAL_PROJECTS.filter((p) => {
+    const finPct = (p.fundReleased / p.sanctionedCost) * 100;
+    return finPct - p.physicalCompletionPct > 15 || p.status === 'STALLED' || p.stalledAlert;
+  }).length; // 1 exception (flagship AS-DAR-0821)
+  const ledgerMatchPct = Number((((totalWorks - activeExceptions) / totalWorks) * 100).toFixed(1)); // 93.3%
+  const officialLanguages = 4;
+
+  return {
+    totalWorks,
+    districtsCovered,
+    coDistrictsCovered,
+    activeExceptions,
+    ledgerMatchPct,
+    officialLanguages,
+  };
+}

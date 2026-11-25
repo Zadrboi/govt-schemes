@@ -229,7 +229,7 @@ export default function AssetDetailPage({
         <div className="p-4 rounded-2xl bg-surface dark:bg-slate-800 border border-line dark:border-slate-700 text-xs space-y-1 sm:text-right flex-shrink-0">
           <div className="flex items-center gap-1.5 text-secondary dark:text-sky-400 font-semibold sm:justify-end">
             <ShieldCheck className="w-4 h-4 text-secondary dark:text-sky-400" />
-            <span>Tamper-Evident SHA-256</span>
+            <span>SHA-256 Audit Checksums (Demo)</span>
           </div>
           <div className="font-mono text-[10px] text-ink-muted dark:text-slate-400 break-all max-w-[200px]">
             {project.workCode.replace(/[^a-zA-Z0-9]/g, '').padEnd(16, 'a')}f4b299e81c0d
@@ -248,7 +248,7 @@ export default function AssetDetailPage({
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h3 className="font-bold text-sm text-red-900 dark:text-red-100">
-              Statutory Stalled Inspection Alert: No Verified Field Progress for {project.daysSinceLastInspection || 74} Days
+              Statutory Stalled Inspection Alert: No Verified Field Progress for {project.daysSinceLastInspection || 74} {(project.daysSinceLastInspection || 74) === 1 ? 'Day' : 'Days'}
             </h3>
             <p>
               Treasury release is {finPct.toFixed(1)}% (₹{project.fundReleased || project.expenditure} Cr of ₹{project.sanctionedCost} Cr), but physical completion remains stuck at {project.physicalCompletionPct}%. Stop-work inquiry mandated under Section 14(2) of Assam Transparency Act.
@@ -285,7 +285,7 @@ export default function AssetDetailPage({
             {project.ucStatus || 'PENDING'}
           </div>
           <div className="text-[10px] text-ink-muted dark:text-slate-400 mt-2">
-            Pending Age: <strong className="text-red-600">{project.pendingUcAgeDays || 74} days</strong>
+            Pending Age: <strong className="text-red-600">{project.pendingUcAgeDays || 74} {(project.pendingUcAgeDays || 74) === 1 ? 'day' : 'days'}</strong>
           </div>
         </div>
 
@@ -369,7 +369,7 @@ export default function AssetDetailPage({
             <div className="flex justify-between items-center pb-3 border-b border-line dark:border-slate-800">
               <h2 className="text-base font-semibold text-ink dark:text-slate-100">Physical Milestone Schedule</h2>
               <span className="text-[11px] text-ink-muted dark:text-slate-400 font-semibold">
-                {project.milestones ? project.milestones.length : 3} Milestones
+                {project.milestones ? project.milestones.length : 3} {(project.milestones ? project.milestones.length : 3) === 1 ? 'Milestone' : 'Milestones'}
               </span>
             </div>
 

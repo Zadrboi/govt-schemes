@@ -8,6 +8,7 @@ import {
   Clock, ArrowUpRight, ChevronRight, X 
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { ASSAM_DISTRICTS } from '@/lib/data/assam-districts';
 
 interface DirectoryEntity {
   id: string;
@@ -206,11 +207,10 @@ export default function DirectoryPage() {
             onChange={(e) => setSelectedDistrict(e.target.value)}
             className="text-xs px-3 py-2 rounded-full bg-white dark:bg-slate-900 text-ink dark:text-slate-100 border border-line dark:border-slate-700 focus:outline-none focus:border-primary shadow-xs"
           >
-            <option value="ALL">All Districts</option>
-            <option value="Darrang">Darrang</option>
-            <option value="Kamrup">Kamrup</option>
-            <option value="Jorhat">Jorhat</option>
-            <option value="Dhubri">Dhubri</option>
+            <option value="ALL">All Districts ({ASSAM_DISTRICTS.length})</option>
+            {ASSAM_DISTRICTS.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
           </select>
         </div>
       </div>

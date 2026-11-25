@@ -125,11 +125,11 @@ export default function InsightsPage() {
             <span className="px-2 py-0.5 rounded-full bg-white/90 text-primary text-[10px] font-semibold">▲ 1.4% vs Q2</span>
           </div>
           <div className="my-2">
-            <div className="text-3xl lg:text-4xl font-bold tracking-tight text-[#0f172a] tabular-nums">99.2%</div>
-            <div className="text-xs text-[#0f172a] font-medium mt-0.5">Telemetry Aligned</div>
+            <div className="text-3xl lg:text-4xl font-bold tracking-tight text-[#0f172a] tabular-nums">93.3%</div>
+            <div className="text-xs text-[#0f172a] font-medium mt-0.5">Telemetry Aligned (Demo Dataset)</div>
           </div>
           <div className="pt-2.5 border-t border-[#7dd3fc] text-[11px] text-[#334155]">
-            {t.insightsCard1Desc || '₹1,420 Cr matched with zero audit friction across 1,840 works.'}
+            {t.insightsCard1Desc || '14 of 15 canonical works matched with zero physical-fiscal variance.'}
           </div>
         </div>
 

@@ -63,10 +63,10 @@ const schemeEnum = z.enum([
   'MLAADS', 'SUHRID', 'UNTIED_FUNDS', 'ASSAM_DARSHAN', 'AAGY', 'NATIONAL_JJM_PMGSY_CUSTOM'
 ]);
 
-const statusEnum = z.enum(['PLANNED', 'ONGOING', 'STALLED', 'COMPLETED', 'CLOSED']);
+const statusEnum = z.enum(['PLANNED', 'ONGOING', 'ON_TRACK', 'IN_PROGRESS', 'STALLED', 'COMPLETED', 'CLOSED']);
 const ucStatusEnum = z.enum(['PENDING', 'SUBMITTED', 'VERIFIED', 'REJECTED', 'NOT_APPLICABLE']);
 
-export const projectCreateSchema = z.object({
+const projectBaseSchema = z.object({
   workCode: z.string().min(3).max(32).regex(/^AS-[A-Z]{3}-\d{4}$/, 'Work code must match AS-XXX-#### format'),
   title: z.string().min(5).max(200).refine(val => !SQL_INJECTION_PATTERN.test(val), 'Potential SQL injection detected'),
   scheme: schemeEnum,
@@ -101,7 +101,29 @@ export const projectCreateSchema = z.object({
   status: statusEnum.default('PLANNED'),
 });
 
-export const projectUpdateSchema = projectCreateSchema.partial().omit({ workCode: true });
+export const projectCreateSchema = projectBaseSchema.refine(
+  (data) => !(data.status === 'COMPLETED' && data.physicalCompletionPct < 100),
+  {
+    message: 'Any work marked COMPLETED must have 100% physical progress',
+    path: ['status'],
+  }
+);
+
+export const projectUpdateSchema = projectBaseSchema
+  .partial()
+  .omit({ workCode: true })
+  .refine(
+    (data) => {
+      if (data.status === 'COMPLETED' && data.physicalCompletionPct !== undefined && data.physicalCompletionPct < 100) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Any work marked COMPLETED must have 100% physical progress',
+      path: ['status'],
+    }
+  );
 
 export const projectQuerySchema = z.object({
   district: z.string().optional(),

@@ -101,30 +101,36 @@ export default function LoginPage() {
 
           {/* 1-Click Sandbox Persona Quick Logins */}
           <div className="space-y-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted dark:text-slate-400 block">
-              {t.loginPersonaTitle || 'Instant Sandbox Roles (1-Click)'}
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary dark:text-sky-400 block font-mono">
+              ⚡ Evaluator 1-Click Role Access (Real Session Cookie)
             </span>
-            <div className="grid grid-cols-3 gap-2 text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
               <button
                 type="button"
-                onClick={() => loginAsDemo('citizen@demo.yojna')}
-                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
+                onClick={() => loginAsDemo('dc@demo.yojna')}
+                disabled={loading}
+                className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/70 hover:bg-blue-100 dark:hover:bg-blue-900 border border-blue-200 dark:border-blue-800 text-ink dark:text-blue-100 font-semibold text-center transition-all shadow-xs flex flex-col items-center justify-center gap-0.5"
               >
-                {t.loginRoleCitizen || 'Citizen'}
+                <span className="text-xs text-primary dark:text-sky-400">DC Commissioner</span>
+                <span className="text-[10px] font-normal text-ink-muted dark:text-slate-400">Executive &amp; Audit Queue</span>
               </button>
               <button
                 type="button"
                 onClick={() => loginAsDemo('officer@demo.yojna')}
-                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
+                disabled={loading}
+                className="p-3 rounded-2xl bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-100 font-semibold text-center transition-all shadow-xs flex flex-col items-center justify-center gap-0.5"
               >
-                {t.loginRoleOfficer || 'Field Officer'}
+                <span className="text-xs text-secondary dark:text-sky-400">Field Inspector</span>
+                <span className="text-[10px] font-normal text-ink-muted dark:text-slate-400">Milestones &amp; Inspections</span>
               </button>
               <button
                 type="button"
-                onClick={() => loginAsDemo('dc@demo.yojna')}
-                className="py-2.5 px-1 rounded-xl bg-surface dark:bg-slate-800 hover:bg-pill dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-200 font-medium text-center transition-colors min-h-[44px] flex items-center justify-center"
+                onClick={() => loginAsDemo('citizen@demo.yojna')}
+                disabled={loading}
+                className="p-3 rounded-2xl bg-surface dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-line dark:border-slate-700 text-ink dark:text-slate-100 font-semibold text-center transition-all shadow-xs flex flex-col items-center justify-center gap-0.5"
               >
-                {t.loginRoleAuditor || 'Auditor / DC'}
+                <span className="text-xs text-emerald-700 dark:text-emerald-400">Citizen (Public)</span>
+                <span className="text-[10px] font-normal text-ink-muted dark:text-slate-400">Gram Sabha Oversight</span>
               </button>
             </div>
           </div>
@@ -178,7 +184,7 @@ export default function LoginPage() {
           </form>
 
           <div className="text-center text-[11px] text-ink-muted dark:text-slate-400">
-            Protected by OWASP ASVS v4.0 strict session security &amp; bcrypt cost 12.
+            Protected by OWASP ASVS Security Controls &amp; bcrypt cost 12.
           </div>
         </div>
       </div>

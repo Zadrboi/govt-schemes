@@ -140,7 +140,7 @@ export default function VerifyPage() {
         currentQueue.push(payload);
         await set('drishti_inspection_queue', currentQueue);
         setQueue(currentQueue);
-        setStatusMessage('Stored in Offline PWA Queue. Will automatically sync when online.');
+        setStatusMessage('Stored in Local-First Offline Queue (Demo). Will automatically sync when online.');
       } catch {
         const local = JSON.parse(localStorage.getItem('drishti_inspection_queue') || '[]');
         local.push(payload);
