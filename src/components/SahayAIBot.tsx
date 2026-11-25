@@ -43,10 +43,10 @@ export default function SahayAIBot() {
 
   const getWelcomeMessage = (l: SupportedLanguage) => {
     const prompts: Record<SupportedLanguage, string> = {
-      en: t.sahayWelcome || 'Hello! I am Sahay AI (সহায়). Ask me about Assam development schemes, Sipajhar water project status, statutory audits, or how to file an RTPS grievance.',
-      as: t.sahayWelcome || 'নমস্কাৰ! মই সহায় এআই (Sahay AI)। অসমৰ উন্নয়নমূলক আঁচনি, চিপাঝাৰ খোৱাপানী প্ৰকল্প বা অভিযোগ দাখিল সম্পৰ্কে সোধক।',
-      hi: t.sahayWelcome || 'नमस्ते! मैं सहाय AI (Sahay AI) हूँ। असम विकास योजनाओं, सिपाझार पेयजल परियोजना स्थिति या आरटीपीएस शिकायत के बारे में पूछें।',
-      bn: t.sahayWelcome || 'নমস্কার! আমি সহায় এআই (Sahay AI)। অসমের বিভিন্ন উন্নয়ন প্রকল্প ও সিপাহীঝাড় পানীয় জল প্রকল্প সম্পর্কে অনুসন্ধান করুন।',
+      en: t.sahayWelcome || 'Hello! I am Sahay AI (সহায়). Ask me anything in English, অসমীয়া, हिन्दी, or বাংলা — from general knowledge and Assam history to live scheme audits.',
+      as: t.sahayWelcome || 'নমস্কাৰ! মই সহায় এআই (Sahay AI)। অসমৰ ইতিহাস, সাধাৰণ জ্ঞান বা উন্নয়নমূলক আঁচনিৰ অডিট সম্পৰ্কে যিকোনো প্ৰশ্ন সোধক।',
+      hi: t.sahayWelcome || 'नमस्ते! मैं सहाय AI हूँ। सामान्य ज्ञान, असम के इतिहास या सरकारी योजनाओं के लाइव ऑडिट के बारे में कुछ भी पूछें।',
+      bn: t.sahayWelcome || 'নমস্কার! আমি সহায় এআই। সাধারণ জ্ঞান, অসমের ইতিহাস বা সরকারি প্রকল্পের লাইভ অডিট সম্পর্কে যেকোনো প্রশ্ন জিজ্ঞাসা করুন।',
     };
     return prompts[l];
   };
@@ -184,20 +184,22 @@ export default function SahayAIBot() {
         body: JSON.stringify({
           message: userMsg.text,
           prompt: userMsg.text,
+          history: historyPayload,
+          messages: historyPayload,
           language: lang,
           lang: lang,
-          messages: historyPayload,
+          pathname: typeof window !== 'undefined' ? window.location.pathname : '/',
           pageContext: typeof window !== 'undefined' ? window.location.pathname : '/',
         }),
       });
 
       const data = await res.json();
 
-      if (data.success) {
+      if (data.reply || data.answer || data.response || data.success) {
         const assistantMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           sender: 'assistant',
-          text: data.response || data.answer || data.data?.answer || 'Response received from statutory ledger.',
+          text: data.reply || data.answer || data.response || data.data?.answer || 'Response received from Sahay AI.',
           citations: data.citations || data.data?.citations || [],
           suggestedAction: data.suggestedAction || data.data?.suggestedAction,
           evidence: data.hasSufficientEvidence ?? data.data?.hasSufficientEvidence,
@@ -472,7 +474,7 @@ export default function SahayAIBot() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? 'Listening now (speak in English, অসমীয়া, etc.)...' : (t.sahayInputPlaceholder || 'Ask in English, অসমীয়া, हिन्दी, or বাংলা...')}
+              placeholder={isListening ? 'Listening now (speak in English, অসমীয়া, etc.)...' : (t.sahayInputPlaceholder || 'Ask Sahay AI anything in English, অসমীয়া, हिन्दी, or বাংলা...')}
               disabled={isLoading}
               className={`flex-1 px-4 py-2 text-base sm:text-xs rounded-full bg-[#f4f7fb] dark:bg-slate-800 text-[#0f172a] dark:text-white border ${
                 isListening 
